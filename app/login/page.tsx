@@ -28,7 +28,14 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { data: staffRow } = user
+      ? await supabase.from("staff").select("id").eq("id", user.id).maybeSingle()
+      : { data: null };
+
+    router.push(staffRow ? "/staff" : "/dashboard");
     router.refresh();
   }
 
@@ -36,7 +43,7 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white text-lg font-semibold mb-4">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-white text-lg font-semibold mb-4">
             UA
           </span>
           <h1 className="text-xl font-semibold text-slate-900">United Accountants</h1>

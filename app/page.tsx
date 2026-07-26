@@ -7,5 +7,8 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  redirect(user ? "/dashboard" : "/login");
+  if (!user) redirect("/login");
+
+  const { data: staffRow } = await supabase.from("staff").select("id").eq("id", user.id).maybeSingle();
+  redirect(staffRow ? "/staff" : "/dashboard");
 }

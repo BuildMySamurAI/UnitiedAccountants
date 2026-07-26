@@ -35,6 +35,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (request.nextUrl.pathname.startsWith("/staff")) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    const { data: staffRow } = await supabase.from("staff").select("id").eq("id", user.id).maybeSingle();
+    if (!staffRow) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+  }
+
   return response;
 }
 

@@ -95,6 +95,25 @@ export async function updateOpportunityCustomFields(
   });
 }
 
+// assignedTo is a native opportunity property, not a custom field.
+export async function updateOpportunityAssignedTo(opportunityId: string, userId: string) {
+  return ghlFetch(`/opportunities/${opportunityId}`, {
+    method: "PUT",
+    body: JSON.stringify({ assignedTo: userId }),
+  });
+}
+
+export type GhlUser = { id: string; name: string; email: string };
+
+export async function getUsers(): Promise<GhlUser[]> {
+  const data = await ghlFetch(`/users/?locationId=${GHL_LOCATION_ID}`);
+  return (data.users ?? []).map((u: { id: string; name: string; email: string }) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+  }));
+}
+
 export type GhlFileEntry = {
   url: string;
   meta: { mimetype: string; name: string; size: number };

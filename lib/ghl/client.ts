@@ -164,3 +164,19 @@ export async function appendOpportunityFileField(
     }),
   });
 }
+
+// Single-file FILE_UPLOAD fields (EIN Confirmation Letter, RT/Sales Tax
+// Submission Confirmation) - a fresh upload replaces the existing one,
+// unlike the multi-file client document fields which append.
+export async function setOpportunityFileField(
+  opportunityId: string,
+  fieldId: string,
+  entry: GhlFileEntry
+) {
+  return ghlFetch(`/opportunities/${opportunityId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      customFields: [{ id: fieldId, field_value: [entry] }],
+    }),
+  });
+}

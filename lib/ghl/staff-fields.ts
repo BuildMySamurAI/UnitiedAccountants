@@ -1,5 +1,13 @@
 import { OPPORTUNITY_FIELDS } from "./constants";
 
+// FILE_UPLOAD fields the team fills in (as opposed to Formation Documents /
+// Identification Documents, which the client uploads from their own portal).
+export const STAFF_FILE_FIELDS: { key: keyof typeof OPPORTUNITY_FIELDS; label: string }[] = [
+  { key: "einConfirmationLetter", label: "EIN Confirmation Letter" },
+  { key: "rtSubmissionConfirmation", label: "RT Submission Confirmation" },
+  { key: "salesTaxSubmissionConfirmation", label: "Sales Tax Submission Confirmation" },
+];
+
 export type StaffFieldType = "text" | "date" | "select";
 
 export type StaffFieldConfig = {

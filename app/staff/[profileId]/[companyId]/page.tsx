@@ -2,13 +2,14 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity, getUsers } from "@/lib/ghl/client";
-import { customFieldValue } from "@/lib/ghl/fields";
+import { customFieldValue, customFieldFileUrl } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
-import { STAFF_FIELD_GROUPS } from "@/lib/ghl/staff-fields";
+import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { StaffField } from "./staff-field";
 import { AssigneeSelect } from "./assignee-select";
+import { StaffDocument } from "./staff-document";
 
 export default async function StaffCompanyPage({
   params,
@@ -79,6 +80,22 @@ export default async function StaffCompanyPage({
             </div>
           </Card>
         ))}
+
+        <Card className="p-6 mb-6">
+          <h2 className="text-base font-semibold text-slate-900 mb-1">Documents (team-provided)</h2>
+          <p className="text-sm text-slate-500 mb-3">Upload as filings come back from Sunbiz/IRS/DOR</p>
+          <div className="divide-y divide-slate-100">
+            {STAFF_FILE_FIELDS.map((f) => (
+              <StaffDocument
+                key={f.key}
+                companyId={companyId}
+                ghlFieldId={OPPORTUNITY_FIELDS[f.key]}
+                label={f.label}
+                initialUrl={customFieldFileUrl(cf, OPPORTUNITY_FIELDS[f.key])}
+              />
+            ))}
+          </div>
+        </Card>
 
         <Card className="p-6">
           <h2 className="text-base font-semibold text-slate-900 mb-3">Client-uploaded documents</h2>

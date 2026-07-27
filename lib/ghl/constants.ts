@@ -43,6 +43,7 @@ export const OPPORTUNITY_FIELDS = {
   identificationDocuments: "AcPHKSJf6FZKBm6ZtuR1",
 
   assignedTeamMember: "hx6HNi8gvVE7d10ytrEc",
+  assignedTeamMemberEmail: "duZEwKTuC4zUKbKPryHJ",
 } as const;
 
 // Fields that are staff-only - never shown to the client, even read-only.

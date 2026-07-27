@@ -53,21 +53,24 @@ export async function assignTeamMember(companyId: string, teamMemberId: string |
   }
 
   let assignedName = "";
+  let assignedEmail = "";
   if (teamMemberId) {
     const { data: teamMember, error: teamMemberError } = await supabase
       .from("team_members")
-      .select("full_name")
+      .select("full_name, email")
       .eq("id", teamMemberId)
       .single();
     if (teamMemberError || !teamMember) {
       return { ok: false, error: "Team member not found." };
     }
     assignedName = teamMember.full_name ?? "";
+    assignedEmail = teamMember.email ?? "";
   }
 
   try {
     await updateOpportunityCustomFields(company.ghl_opportunity_id, [
       { id: OPPORTUNITY_FIELDS.assignedTeamMember, field_value: assignedName },
+      { id: OPPORTUNITY_FIELDS.assignedTeamMemberEmail, field_value: assignedEmail },
     ]);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to update GHL" };

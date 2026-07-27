@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { resolvePostLoginPath } from "@/lib/post-login-redirect";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,12 @@ export default function SetPasswordForm({ email }: { email: string }) {
       return;
     }
 
-    router.push("/dashboard");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const path = user ? await resolvePostLoginPath(supabase, user.id) : "/dashboard";
+
+    router.push(path);
     router.refresh();
   }
 

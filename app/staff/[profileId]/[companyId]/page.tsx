@@ -1,14 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getOpportunity, getUsers } from "@/lib/ghl/client";
+import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue, customFieldFileUrl } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { StaffField } from "./staff-field";
-import { AssigneeSelect } from "./assignee-select";
 import { StaffDocument } from "./staff-document";
 
 export default async function StaffCompanyPage({
@@ -24,15 +23,16 @@ export default async function StaffCompanyPage({
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, ghl_opportunity_id")
+    .select("id, ghl_opportunity_id, assigned_team_member_id, team_members(full_name)")
     .eq("id", companyId)
     .single();
 
   if (!company) notFound();
 
-  const [opportunity, users] = await Promise.all([getOpportunity(company.ghl_opportunity_id), getUsers()]);
+  const opportunity = await getOpportunity(company.ghl_opportunity_id);
   const cf = opportunity.customFields;
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
+  const assignedName = (company.team_members as unknown as { full_name: string } | null)?.full_name;
 
   const { data: files } = await supabase
     .from("files")
@@ -52,9 +52,16 @@ export default async function StaffCompanyPage({
 
         <Card className="p-6 mb-6">
           <h2 className="text-base font-semibold text-slate-900 mb-1">Assignment</h2>
-          <div className="divide-y divide-slate-100 mt-3">
-            <AssigneeSelect companyId={companyId} users={users} initialValue={opportunity.assignedTo ?? ""} />
-          </div>
+          <p className="text-sm text-slate-500 mt-2">
+            {assignedName ? (
+              <>
+                Assigned to <span className="font-medium text-slate-900">{assignedName}</span>
+              </>
+            ) : (
+              "Not yet assigned"
+            )}
+            <span className="text-slate-400"> - set from the Owner Portal</span>
+          </p>
         </Card>
 
         {STAFF_FIELD_GROUPS.map((group) => (

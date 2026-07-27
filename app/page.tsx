@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { resolvePostLoginPath } from "@/lib/post-login-redirect";
 
 export default async function Home() {
   const supabase = await supabaseServer();
@@ -9,6 +10,5 @@ export default async function Home() {
 
   if (!user) redirect("/login");
 
-  const { data: staffRow } = await supabase.from("staff").select("id").eq("id", user.id).maybeSingle();
-  redirect(staffRow ? "/staff" : "/dashboard");
+  redirect(await resolvePostLoginPath(supabase, user.id));
 }

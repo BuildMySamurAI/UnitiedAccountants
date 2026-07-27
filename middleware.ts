@@ -41,8 +41,22 @@ export async function middleware(request: NextRequest) {
       url.pathname = "/login";
       return NextResponse.redirect(url);
     }
-    const { data: staffRow } = await supabase.from("staff").select("id").eq("id", user.id).maybeSingle();
-    if (!staffRow) {
+    const { data: teamRow } = await supabase.from("team_members").select("id").eq("id", user.id).maybeSingle();
+    if (!teamRow) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (request.nextUrl.pathname.startsWith("/owner")) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    const { data: ownerRow } = await supabase.from("owners").select("id").eq("id", user.id).maybeSingle();
+    if (!ownerRow) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);

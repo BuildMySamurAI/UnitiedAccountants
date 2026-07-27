@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { resolvePostLoginPath } from "@/lib/post-login-redirect";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -31,11 +32,10 @@ export default function LoginPage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const { data: staffRow } = user
-      ? await supabase.from("staff").select("id").eq("id", user.id).maybeSingle()
-      : { data: null };
 
-    router.push(staffRow ? "/staff" : "/dashboard");
+    const path = user ? await resolvePostLoginPath(supabase, user.id) : "/dashboard";
+
+    router.push(path);
     router.refresh();
   }
 

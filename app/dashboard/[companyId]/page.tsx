@@ -6,6 +6,7 @@ import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
+import { CompanyTabs } from "@/components/company-tabs";
 import { AutoSaveField } from "./auto-save-field";
 import DocumentUploader from "./document-uploader";
 
@@ -64,6 +65,12 @@ export default async function CompanyPage({
     .order("created_at", { ascending: false })
     .limit(5);
 
+  const { data: siblingCompanies } = await supabase
+    .from("companies")
+    .select("id, business_name")
+    .eq("profile_id", user.id)
+    .order("created_at", { ascending: true });
+
   const checklist = [
     Boolean(businessName?.trim()),
     Boolean(mailingAddress?.trim()),
@@ -84,10 +91,16 @@ export default async function CompanyPage({
           &larr; Back to companies
         </Link>
         <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-1">{businessName}</h1>
-        <p className="text-sm text-slate-500 mb-6">
+        <p className="text-sm text-slate-500 mb-4">
           Share a few business details and upload your documents below. Everything you submit
           reaches your accountant instantly.
         </p>
+
+        <CompanyTabs
+          companies={siblingCompanies ?? []}
+          activeId={company.id}
+          hrefFor={(id) => `/dashboard/${id}`}
+        />
 
         <Card
           className={`p-5 mb-8 flex items-center gap-3 ${

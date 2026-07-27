@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { StageBadge } from "@/components/ui/badge";
+import { ClientSwitcher } from "@/components/client-switcher";
 import { AssignSelect } from "../assign-select";
 
 export default async function OwnerClientDetailPage({
@@ -25,23 +26,34 @@ export default async function OwnerClientDetailPage({
 
   if (!profile) notFound();
 
-  const [{ data: companies }, { data: teamMembers }] = await Promise.all([
+  const [{ data: companies }, { data: teamMembers }, { data: allProfiles }] = await Promise.all([
     supabase
       .from("companies")
       .select("id, business_name, pipeline_stage, assigned_team_member_id")
       .eq("profile_id", profileId)
       .order("created_at", { ascending: true }),
     supabase.from("team_members").select("id, full_name").order("full_name", { ascending: true }),
+    supabase.from("profiles").select("id, first_name, last_name").order("created_at", { ascending: false }),
   ]);
+
+  const clientOptions = (allProfiles ?? []).map((p) => ({
+    id: p.id,
+    label: `${p.first_name} ${p.last_name}`,
+  }));
 
   return (
     <div className="min-h-screen">
       <Header userLabel={user?.email ?? undefined} subtitle="Owner Portal" />
 
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <Link href="/owner" className="text-sm text-slate-500 hover:text-slate-700">
-          &larr; All clients
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link href="/owner" className="text-sm text-slate-500 hover:text-slate-700">
+            &larr; All clients
+          </Link>
+          {clientOptions.length > 1 && (
+            <ClientSwitcher clients={clientOptions} activeId={profileId} basePath="/owner" />
+          )}
+        </div>
         <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-1">
           {profile.first_name} {profile.last_name}
         </h1>

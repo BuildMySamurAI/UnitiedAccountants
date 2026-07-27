@@ -7,6 +7,8 @@ import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
+import { CompanyTabs } from "@/components/company-tabs";
+import { ClientSwitcher } from "@/components/client-switcher";
 import { StaffField } from "./staff-field";
 import { StaffDocument } from "./staff-document";
 
@@ -40,15 +42,48 @@ export default async function StaffCompanyPage({
     .eq("company_id", companyId)
     .order("uploaded_at", { ascending: false });
 
+  // RLS already restricts these to companies/clients assigned to this team
+  // member, so no extra filtering is needed here.
+  const { data: siblingCompanies } = await supabase
+    .from("companies")
+    .select("id, business_name")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: true });
+
+  const { data: assignedCompanies } = await supabase
+    .from("companies")
+    .select("profile_id, profiles(id, first_name, last_name)")
+    .order("created_at", { ascending: true });
+
+  const clientOptions = Array.from(
+    new Map(
+      (assignedCompanies ?? []).map((c) => {
+        const p = c.profiles as unknown as { id: string; first_name: string; last_name: string } | null;
+        return [c.profile_id, { id: c.profile_id, label: p ? `${p.first_name} ${p.last_name}` : c.profile_id }];
+      })
+    ).values()
+  );
+
   return (
     <div className="min-h-screen">
       <Header userLabel={user?.email ?? undefined} subtitle="Team Portal" />
 
       <main className="mx-auto max-w-3xl px-6 py-10">
-        <Link href={`/staff/${profileId}`} className="text-sm text-slate-500 hover:text-slate-700">
-          &larr; Back to client
-        </Link>
-        <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-8">{businessName}</h1>
+        <div className="flex items-center justify-between">
+          <Link href={`/staff/${profileId}`} className="text-sm text-slate-500 hover:text-slate-700">
+            &larr; Back to client
+          </Link>
+          {clientOptions.length > 1 && (
+            <ClientSwitcher clients={clientOptions} activeId={profileId} basePath="/staff" />
+          )}
+        </div>
+        <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-4">{businessName}</h1>
+
+        <CompanyTabs
+          companies={siblingCompanies ?? []}
+          activeId={companyId}
+          hrefFor={(id) => `/staff/${profileId}/${id}`}
+        />
 
         <Card className="p-6 mb-6">
           <h2 className="text-base font-semibold text-slate-900 mb-1">Assignment</h2>

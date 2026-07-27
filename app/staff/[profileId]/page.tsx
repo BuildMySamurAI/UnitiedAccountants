@@ -6,6 +6,7 @@ import { CONTACT_FIELDS } from "@/lib/ghl/constants";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { StageBadge } from "@/components/ui/badge";
+import { ClientSwitcher } from "@/components/client-switcher";
 
 export default async function StaffClientDetailPage({
   params,
@@ -32,6 +33,22 @@ export default async function StaffClientDetailPage({
     .eq("profile_id", profileId)
     .order("created_at", { ascending: true });
 
+  // RLS already restricts this to companies assigned to the logged-in team
+  // member, so the distinct profiles here are exactly their assigned clients.
+  const { data: assignedCompanies } = await supabase
+    .from("companies")
+    .select("profile_id, profiles(id, first_name, last_name)")
+    .order("created_at", { ascending: true });
+
+  const clientOptions = Array.from(
+    new Map(
+      (assignedCompanies ?? []).map((c) => {
+        const p = c.profiles as unknown as { id: string; first_name: string; last_name: string } | null;
+        return [c.profile_id, { id: c.profile_id, label: p ? `${p.first_name} ${p.last_name}` : c.profile_id }];
+      })
+    ).values()
+  );
+
   let portalAccountStatus = "Unknown";
   try {
     const contact = profile.ghl_contact_id ? await getContact(profile.ghl_contact_id) : null;
@@ -46,9 +63,14 @@ export default async function StaffClientDetailPage({
       <Header userLabel={user?.email ?? undefined} subtitle="Team Portal" />
 
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <Link href="/staff" className="text-sm text-slate-500 hover:text-slate-700">
-          &larr; All clients
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link href="/staff" className="text-sm text-slate-500 hover:text-slate-700">
+            &larr; All clients
+          </Link>
+          {clientOptions.length > 1 && (
+            <ClientSwitcher clients={clientOptions} activeId={profileId} basePath="/staff" />
+          )}
+        </div>
         <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-6">
           {profile.first_name} {profile.last_name}
         </h1>

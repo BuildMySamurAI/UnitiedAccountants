@@ -65,7 +65,12 @@ export default async function OwnerClientDetailPage({
           {companies?.map((c) => (
             <Card key={c.id} className="p-5 flex items-center justify-between gap-4">
               <div>
-                <p className="font-medium text-slate-900">{c.business_name}</p>
+                <Link
+                  href={`/owner/${profileId}/${c.id}`}
+                  className="font-medium text-slate-900 hover:text-emerald-700 hover:underline"
+                >
+                  {c.business_name}
+                </Link>
                 <div className="mt-1.5">
                   <StageBadge stage={c.pipeline_stage} />
                 </div>

@@ -230,6 +230,7 @@ export default async function CompanyPage({
                     ["Setup Completion", field("surePayrollSetupCompletion")],
                     ["Deposit Schedule", field("surePayrollDepositSchedule")],
                     ["Filing Frequency", field("payrollFilingFrequency")],
+                    ["Processing Date", field("payrollProcessingDate")],
                   ]}
                   last
                 />

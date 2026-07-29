@@ -85,6 +85,43 @@ export async function getOpportunity(opportunityId: string) {
   return data.opportunity;
 }
 
+export type GhlOpportunitySummary = { id: string; name: string };
+
+// Paginates through every opportunity in a pipeline (GHL's search endpoint
+// caps out at 100/page) using its startAfter/startAfterId cursor. Deliberately
+// returns id/name only - the search endpoint's customFields come back in a
+// different shape (fieldValueString/fieldValueDate with epoch-ms dates, etc.)
+// than getOpportunity()'s {id, fieldValue}, which the rest of the app relies
+// on. Callers needing field values should fetch each opportunity individually
+// via getOpportunity() to stay on that one consistent parsing path.
+export async function getAllOpportunitiesInPipeline(pipelineId: string): Promise<GhlOpportunitySummary[]> {
+  const results: GhlOpportunitySummary[] = [];
+  let startAfter: number | undefined;
+  let startAfterId: string | undefined;
+
+  for (;;) {
+    const params = new URLSearchParams({
+      location_id: GHL_LOCATION_ID,
+      pipeline_id: pipelineId,
+      limit: "100",
+    });
+    if (startAfter && startAfterId) {
+      params.set("startAfter", String(startAfter));
+      params.set("startAfterId", startAfterId);
+    }
+
+    const data = await ghlFetch(`/opportunities/search?${params.toString()}`);
+    results.push(...(data.opportunities ?? []));
+
+    if (!data.opportunities?.length || results.length >= (data.meta?.total ?? 0)) break;
+    startAfter = data.meta?.startAfter;
+    startAfterId = data.meta?.startAfterId;
+    if (!startAfter || !startAfterId) break;
+  }
+
+  return results;
+}
+
 export async function updateOpportunityCustomFields(
   opportunityId: string,
   fields: GhlCustomFieldWrite[]

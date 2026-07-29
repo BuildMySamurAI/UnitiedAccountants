@@ -36,6 +36,7 @@ export const OPPORTUNITY_FIELDS = {
   surePayrollSetupCompletion: "aUcn14Xy7laNQtJsT4Jg",
   surePayrollDepositSchedule: "Nup3ISSNtUuauubXqZhO",
   payrollFilingFrequency: "2IhPRSJDQj7EoJRgVNlE",
+  payrollProcessingDate: "ciHIXqMhD8dahIgXk54m",
 
   qcPassed: "kVk6K53hS2ywO2kb65Ui", // staff-only
 

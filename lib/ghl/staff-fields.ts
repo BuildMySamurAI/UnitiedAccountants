@@ -72,6 +72,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
       { key: "surePayrollSetupCompletion", dbColumn: "surepayroll_setup_completion", label: "Setup Completion", type: "select", options: ["Pending", "Complete"] },
       { key: "surePayrollDepositSchedule", dbColumn: "surepayroll_deposit_schedule", label: "Deposit Schedule", type: "text" },
       { key: "payrollFilingFrequency", dbColumn: "payroll_filing_frequency", label: "Filing Frequency", type: "select", options: ["Weekly", "Bi-Weekly", "Monthly"] },
+      { key: "payrollProcessingDate", dbColumn: "payroll_processing_date", label: "Processing Date", type: "date" },
     ],
   },
   {

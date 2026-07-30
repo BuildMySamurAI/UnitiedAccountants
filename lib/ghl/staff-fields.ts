@@ -8,7 +8,7 @@ export const STAFF_FILE_FIELDS: { key: keyof typeof OPPORTUNITY_FIELDS; label: s
   { key: "salesTaxSubmissionConfirmation", label: "Sales Tax Submission Confirmation" },
 ];
 
-export type StaffFieldType = "text" | "date" | "select";
+export type StaffFieldType = "text" | "date" | "select" | "number";
 
 export type StaffFieldConfig = {
   key: keyof typeof OPPORTUNITY_FIELDS;
@@ -78,5 +78,22 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
   {
     title: "QC",
     fields: [{ key: "qcPassed", dbColumn: "qc_passed", label: "QC Passed?", type: "select", options: ["Yes", "No"] }],
+  },
+  {
+    title: "Bookkeeping",
+    fields: [
+      {
+        key: "bookkeepingStatus",
+        dbColumn: "bookkeeping_status",
+        label: "Bookkeeping Status",
+        type: "select",
+        options: ["Statements Pending", "Data Entry", "Reconciliation", "Final Review", "Locked"],
+      },
+      { key: "currentMonth", dbColumn: "current_month", label: "Current Month", type: "text" },
+      { key: "statementsReceived", dbColumn: "statements_received", label: "Statements Received?", type: "select", options: ["Yes", "No"] },
+      { key: "reconciliationDifference", dbColumn: "reconciliation_difference", label: "Reconciliation Difference", type: "number" },
+      { key: "monthLocked", dbColumn: "month_locked", label: "Month Locked?", type: "select", options: ["Yes", "No"] },
+      { key: "monthLockedDate", dbColumn: "month_locked_date", label: "Month Locked Date", type: "date" },
+    ],
   },
 ];

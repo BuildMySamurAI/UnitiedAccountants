@@ -85,15 +85,18 @@ export async function getOpportunity(opportunityId: string) {
   return data.opportunity;
 }
 
-export type GhlOpportunitySummary = { id: string; name: string };
+export type GhlOpportunitySummary = { id: string; name: string; pipelineStageId: string };
 
 // Paginates through every opportunity in a pipeline (GHL's search endpoint
 // caps out at 100/page) using its startAfter/startAfterId cursor. Deliberately
-// returns id/name only - the search endpoint's customFields come back in a
-// different shape (fieldValueString/fieldValueDate with epoch-ms dates, etc.)
-// than getOpportunity()'s {id, fieldValue}, which the rest of the app relies
-// on. Callers needing field values should fetch each opportunity individually
-// via getOpportunity() to stay on that one consistent parsing path.
+// returns id/name/pipelineStageId only - the search endpoint's customFields
+// come back in a different shape (fieldValueString/fieldValueDate with
+// epoch-ms dates, etc.) than getOpportunity()'s {id, fieldValue}, which the
+// rest of the app relies on. Callers needing field values should fetch each
+// opportunity individually via getOpportunity() to stay on that one
+// consistent parsing path. Note: pipeline_stage_id is not a working filter
+// on this endpoint (silently returns zero results even for a confirmed
+// match) - filter by pipelineStageId client-side instead.
 export async function getAllOpportunitiesInPipeline(pipelineId: string): Promise<GhlOpportunitySummary[]> {
   const results: GhlOpportunitySummary[] = [];
   let startAfter: number | undefined;

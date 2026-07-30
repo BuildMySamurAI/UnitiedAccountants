@@ -2,6 +2,7 @@ export const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID!;
 
 export const PIPELINE_NEW_CORP_ONBOARDING = process.env.GHL_PIPELINE_ID_NEW_CORP_ONBOARDING!;
 export const STAGE_CLIENT_ONBOARDING = process.env.GHL_STAGE_ID_CLIENT_ONBOARDING!;
+export const STAGE_ACTIVE_CLIENT = process.env.GHL_STAGE_ID_ACTIVE_CLIENT!;
 
 // Opportunity ("Company" folder) custom field IDs - the full set that exists in GHL today.
 export const OPPORTUNITY_FIELDS = {
@@ -45,6 +46,13 @@ export const OPPORTUNITY_FIELDS = {
 
   assignedTeamMember: "hx6HNi8gvVE7d10ytrEc",
   assignedTeamMemberEmail: "duZEwKTuC4zUKbKPryHJ",
+
+  bookkeepingStatus: "VeEBAYcwkpj4103RygCn", // staff-only
+  currentMonth: "OLXSJwc0VEJ3tV6w5tNe", // staff-only
+  statementsReceived: "m8qPGSSYJ3DTlpPUXsMM", // staff-only
+  reconciliationDifference: "Wlxq7oTIc09cG1Zw3sXJ", // staff-only
+  monthLocked: "mT4RHjsk0gaaGFVAYwlG", // staff-only
+  monthLockedDate: "DLRCD86Gmf0QqpYJnkRy", // staff-only
 } as const;
 
 // Fields that are staff-only - never shown to the client, even read-only.
@@ -55,6 +63,12 @@ export const STAFF_ONLY_OPPORTUNITY_FIELDS = new Set<string>([
   OPPORTUNITY_FIELDS.rtApproved,
   OPPORTUNITY_FIELDS.rtSubmissionConfirmation,
   OPPORTUNITY_FIELDS.qcPassed,
+  OPPORTUNITY_FIELDS.bookkeepingStatus,
+  OPPORTUNITY_FIELDS.currentMonth,
+  OPPORTUNITY_FIELDS.statementsReceived,
+  OPPORTUNITY_FIELDS.reconciliationDifference,
+  OPPORTUNITY_FIELDS.monthLocked,
+  OPPORTUNITY_FIELDS.monthLockedDate,
 ]);
 
 export const CONTACT_FIELDS = {

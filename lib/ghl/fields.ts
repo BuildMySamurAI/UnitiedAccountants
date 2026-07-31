@@ -20,3 +20,19 @@ export function customFieldFileUrl(
   const entry = Array.isArray(value) ? value[0] : value;
   return entry && typeof entry === "object" && "url" in entry ? (entry as { url: string }).url : undefined;
 }
+
+export type GhlFileFieldEntry = { url: string; name: string };
+
+// Same as customFieldFileUrl but returns every file on a multi-file field,
+// not just the first.
+export function customFieldFileUrls(
+  customFields: { id: string; fieldValue?: unknown }[] | undefined,
+  fieldId: string
+): GhlFileFieldEntry[] {
+  const match = customFields?.find((f) => f.id === fieldId);
+  const value = match?.fieldValue;
+  const entries = Array.isArray(value) ? value : value ? [value] : [];
+  return entries
+    .filter((e): e is { url: string; meta?: { name?: string } } => Boolean(e && typeof e === "object" && "url" in e))
+    .map((e) => ({ url: e.url, name: e.meta?.name ?? e.url.split("/").pop() ?? "file" }));
+}

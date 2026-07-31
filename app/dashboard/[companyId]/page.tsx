@@ -2,13 +2,15 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
-import { customFieldValue } from "@/lib/ghl/fields";
+import { customFieldValue, customFieldFileUrls } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { CompanyTabs } from "@/components/company-tabs";
+import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
 import { AutoSaveField } from "./auto-save-field";
 import DocumentUploader from "./document-uploader";
+import DocumentUploaderMulti from "./document-uploader-multi";
 
 const CheckCircleIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -57,6 +59,10 @@ export default async function CompanyPage({
 
   const formationDocs = files?.filter((f) => f.field_key === "formation_documents") ?? [];
   const identificationDocs = files?.filter((f) => f.field_key === "identification_documents") ?? [];
+
+  // The monthly bookkeeping document fields only show up while the cycle is
+  // open - hidden entirely once staff locks the month, until the next reset.
+  const bookkeepingCycleOpen = field("monthLocked") !== "Yes";
 
   const { data: notifications } = await supabase
     .from("notifications")
@@ -186,6 +192,35 @@ export default async function CompanyPage({
                 </div>
               )}
             </Card>
+
+            {bookkeepingCycleOpen && (
+              <Card className="p-6">
+                <h2 className="text-base font-semibold text-slate-900 mb-1">Monthly Bookkeeping Documents</h2>
+                <p className="text-sm text-slate-500 mb-3">
+                  Upload this month's statements and documents - available until your accountant locks the month.
+                </p>
+                <div className="divide-y divide-slate-100">
+                  {CLIENT_BOOKKEEPING_FILE_FIELDS.map((f) => (
+                    <DocumentUploader
+                      key={f.fieldKey}
+                      companyId={company.id}
+                      fieldKey={f.fieldKey}
+                      label={f.label}
+                      existing={files?.filter((file) => file.field_key === f.fieldKey) ?? []}
+                    />
+                  ))}
+                  {SHARED_BOOKKEEPING_FILE_FIELDS.map((f) => (
+                    <DocumentUploaderMulti
+                      key={f.key}
+                      companyId={company.id}
+                      ghlFieldId={OPPORTUNITY_FIELDS[f.key]}
+                      label={f.label}
+                      existing={customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key])}
+                    />
+                  ))}
+                </div>
+              </Card>
+            )}
 
             <Card className="p-6">
               <h2 className="text-base font-semibold text-slate-900 mb-1">Filing status</h2>

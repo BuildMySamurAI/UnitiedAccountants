@@ -2,15 +2,17 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
-import { customFieldValue, customFieldFileUrl } from "@/lib/ghl/fields";
+import { customFieldValue, customFieldFileUrl, customFieldFileUrls } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
+import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { CompanyTabs } from "@/components/company-tabs";
 import { ClientSwitcher } from "@/components/client-switcher";
 import { StaffField } from "./staff-field";
 import { StaffDocument } from "./staff-document";
+import { StaffDocumentMulti } from "./staff-document-multi";
 
 export default async function StaffCompanyPage({
   params,
@@ -35,6 +37,9 @@ export default async function StaffCompanyPage({
   const cf = opportunity.customFields;
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
   const assignedName = (company.team_members as unknown as { full_name: string } | null)?.full_name;
+
+  // Same gating as the client portal - only shown while the month is open.
+  const bookkeepingCycleOpen = customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked) !== "Yes";
 
   const { data: files } = await supabase
     .from("files")
@@ -138,6 +143,53 @@ export default async function StaffCompanyPage({
             ))}
           </div>
         </Card>
+
+        {bookkeepingCycleOpen && (
+          <Card className="p-6 mb-6">
+            <h2 className="text-base font-semibold text-slate-900 mb-1">Monthly Bookkeeping Documents</h2>
+            <p className="text-sm text-slate-500 mb-3">
+              Available while the month is open - hides once the month is locked
+            </p>
+            <div className="divide-y divide-slate-100">
+              {SHARED_BOOKKEEPING_FILE_FIELDS.map((f) => (
+                <StaffDocumentMulti
+                  key={f.key}
+                  companyId={companyId}
+                  ghlFieldId={OPPORTUNITY_FIELDS[f.key]}
+                  label={f.label}
+                  existing={customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key])}
+                />
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                Client-uploaded (view only)
+              </h3>
+              <ul className="space-y-1.5">
+                {CLIENT_BOOKKEEPING_FILE_FIELDS.flatMap((f) =>
+                  customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).map((entry, i) => (
+                    <li key={`${f.key}-${i}`} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">
+                        {f.label} - {entry.name}
+                      </span>
+                      <a
+                        href={entry.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-700 hover:underline shrink-0 ml-3"
+                      >
+                        View
+                      </a>
+                    </li>
+                  ))
+                )}
+                {CLIENT_BOOKKEEPING_FILE_FIELDS.every((f) => customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).length === 0) && (
+                  <p className="text-sm text-slate-400">Nothing uploaded yet.</p>
+                )}
+              </ul>
+            </div>
+          </Card>
+        )}
 
         <Card className="p-6">
           <h2 className="text-base font-semibold text-slate-900 mb-3">Client-uploaded documents</h2>

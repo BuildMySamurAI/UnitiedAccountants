@@ -53,6 +53,21 @@ export const OPPORTUNITY_FIELDS = {
   reconciliationDifference: "Wlxq7oTIc09cG1Zw3sXJ", // staff-only
   monthLocked: "mT4RHjsk0gaaGFVAYwlG", // staff-only
   monthLockedDate: "DLRCD86Gmf0QqpYJnkRy", // staff-only
+
+  // Monthly bookkeeping documents - only shown while the cycle is open
+  // (monthLocked !== "Yes"). Client-uploaded only:
+  bankStatements: "BdqzzVPAacG1wcc4iKsj",
+  creditCardStatement: "y3sU5jMXSTMTa4c7pF9B",
+  merchantStatement: "coKSbtVdVtf00P2AU1bR",
+  cashExpensesReport: "KACvQ07zVam2TMH9kYTJ",
+  // Shared - both client and team can upload to these:
+  corpRenewals: "7jvemGT5cgxZKtaUfYL0",
+  salesTaxDocuments: "YbkydfG9j77CVU3KfQz1",
+  payrollDocuments: "6WBCf7I96jCu9fYCS2M1",
+  foodPermit: "dDr9xyquPr1ZtXsPdKA8",
+  dbprLicenses: "vLv7bBsYfkCmD5e4DSyf",
+  incomeTax: "ersAfkThqjdVGCN8xnIh",
+  businessTaxReceipt: "S2a1zDztsw89x9G7x0wA",
 } as const;
 
 // Fields that are staff-only - never shown to the client, even read-only.

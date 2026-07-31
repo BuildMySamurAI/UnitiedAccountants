@@ -1,7 +1,12 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
-import { updateOpportunityCustomFields, uploadMedia, setOpportunityFileField } from "@/lib/ghl/client";
+import {
+  updateOpportunityCustomFields,
+  uploadMedia,
+  setOpportunityFileField,
+  appendOpportunityFileField,
+} from "@/lib/ghl/client";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -66,6 +71,45 @@ export async function uploadStaffDocument(
   try {
     const uploaded = await uploadMedia(file, file.name);
     await setOpportunityFileField(company.ghl_opportunity_id, ghlFieldId, {
+      url: uploaded.url,
+      meta: { mimetype: file.type || "application/octet-stream", name: file.name, size: file.size },
+      deleted: false,
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to upload to GHL" };
+  }
+
+  return { ok: true };
+}
+
+// For multi-file bookkeeping document fields (Corp Renewals, Sales Tax, etc.)
+// - unlike uploadStaffDocument above, this appends rather than replaces,
+// since both the team and the client can upload to these same fields.
+export async function uploadStaffDocumentMulti(
+  companyId: string,
+  ghlFieldId: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "No file provided." };
+  }
+
+  const supabase = await supabaseServer();
+
+  const { data: company, error: fetchError } = await supabase
+    .from("companies")
+    .select("ghl_opportunity_id")
+    .eq("id", companyId)
+    .single();
+
+  if (fetchError || !company) {
+    return { ok: false, error: "Company not found." };
+  }
+
+  try {
+    const uploaded = await uploadMedia(file, file.name);
+    await appendOpportunityFileField(company.ghl_opportunity_id, ghlFieldId, {
       url: uploaded.url,
       meta: { mimetype: file.type || "application/octet-stream", name: file.name, size: file.size },
       deleted: false,

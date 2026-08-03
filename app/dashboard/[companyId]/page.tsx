@@ -10,7 +10,6 @@ import { CompanyTabs } from "@/components/company-tabs";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
 import { AutoSaveField } from "./auto-save-field";
 import DocumentUploader from "./document-uploader";
-import DocumentUploaderMulti from "./document-uploader-multi";
 
 const CheckCircleIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -197,7 +196,7 @@ export default async function CompanyPage({
               <Card className="p-6">
                 <h2 className="text-base font-semibold text-slate-900 mb-1">Monthly Bookkeeping Documents</h2>
                 <p className="text-sm text-slate-500 mb-3">
-                  Upload this month's statements and documents - available until your accountant locks the month.
+                  Upload this month's statements - available until your accountant locks the month.
                 </p>
                 <div className="divide-y divide-slate-100">
                   {CLIENT_BOOKKEEPING_FILE_FIELDS.map((f) => (
@@ -209,15 +208,34 @@ export default async function CompanyPage({
                       existing={files?.filter((file) => file.field_key === f.fieldKey) ?? []}
                     />
                   ))}
-                  {SHARED_BOOKKEEPING_FILE_FIELDS.map((f) => (
-                    <DocumentUploaderMulti
-                      key={f.key}
-                      companyId={company.id}
-                      ghlFieldId={OPPORTUNITY_FIELDS[f.key]}
-                      label={f.label}
-                      existing={customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key])}
-                    />
-                  ))}
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                    Provided by your accountant (view only)
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {SHARED_BOOKKEEPING_FILE_FIELDS.flatMap((f) =>
+                      customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).map((entry, i) => (
+                        <li key={`${f.key}-${i}`} className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500">
+                            {f.label} - {entry.name}
+                          </span>
+                          <a
+                            href={entry.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-700 hover:underline shrink-0 ml-3"
+                          >
+                            View
+                          </a>
+                        </li>
+                      ))
+                    )}
+                    {SHARED_BOOKKEEPING_FILE_FIELDS.every(
+                      (f) => customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).length === 0
+                    ) && <p className="text-sm text-slate-400">Nothing here yet.</p>}
+                  </ul>
                 </div>
               </Card>
             )}

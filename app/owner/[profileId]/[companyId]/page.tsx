@@ -42,6 +42,7 @@ export default async function OwnerCompanyPage({
   const cf = opportunity.customFields;
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
   const bookkeepingCycleOpen = customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked) !== "Yes";
+  const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
 
   const { data: files } = await supabase
     .from("files")
@@ -90,6 +91,14 @@ export default async function OwnerCompanyPage({
               initialValue={company.assigned_team_member_id ?? ""}
             />
           </div>
+        </Card>
+
+        <Card className="p-6 mb-6">
+          <h2 className="text-base font-semibold text-slate-900 mb-1">QC Passed?</h2>
+          <p className="text-sm text-slate-500 mt-2">
+            <span className="font-medium text-slate-900">{qcPassed || "Not set"}</span>
+            <span className="text-slate-400"> - set automatically by a GHL workflow, view only</span>
+          </p>
         </Card>
 
         {STAFF_FIELD_GROUPS.map((group) => (

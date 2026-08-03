@@ -76,10 +76,6 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
     ],
   },
   {
-    title: "QC",
-    fields: [{ key: "qcPassed", dbColumn: "qc_passed", label: "QC Passed?", type: "select", options: ["Yes", "No"] }],
-  },
-  {
     title: "Bookkeeping",
     fields: [
       {

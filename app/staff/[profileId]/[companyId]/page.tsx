@@ -37,6 +37,7 @@ export default async function StaffCompanyPage({
   const cf = opportunity.customFields;
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
   const assignedName = (company.team_members as unknown as { full_name: string } | null)?.full_name;
+  const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
 
   // Same gating as the client portal - only shown while the month is open.
   const bookkeepingCycleOpen = customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked) !== "Yes";
@@ -101,6 +102,14 @@ export default async function StaffCompanyPage({
               "Not yet assigned"
             )}
             <span className="text-slate-400"> - set from the Owner Portal</span>
+          </p>
+        </Card>
+
+        <Card className="p-6 mb-6">
+          <h2 className="text-base font-semibold text-slate-900 mb-1">QC Passed?</h2>
+          <p className="text-sm text-slate-500 mt-2">
+            <span className="font-medium text-slate-900">{qcPassed || "Not set"}</span>
+            <span className="text-slate-400"> - set automatically by a GHL workflow, view only</span>
           </p>
         </Card>
 

@@ -64,8 +64,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user && !isPublic) {
+    const host = request.headers.get("host") ?? "";
+    const internalDomain = process.env.NEXT_PUBLIC_INTERNAL_PORTAL_DOMAIN;
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = internalDomain && host.startsWith(internalDomain) ? "/internal/login" : "/login";
     return NextResponse.redirect(url);
   }
 

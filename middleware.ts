@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/staff/login", "/owner/login", "/auth", "/onboard", "/api/webhooks", "/api/cron"];
+const PUBLIC_PATHS = ["/login", "/internal/login", "/auth", "/onboard", "/api/webhooks", "/api/cron"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -30,34 +30,34 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
-  // /staff and /owner have their own login pages and role checks - handle
-  // them first so the generic "no session -> /login" catch-all below never
-  // sees these paths.
-  if (pathname.startsWith("/staff") && pathname !== "/staff/login") {
+  // /staff and /owner share the same internal login page and role checks -
+  // handle them first so the generic "no session -> /login" catch-all below
+  // never sees these paths.
+  if (pathname.startsWith("/staff")) {
     if (!user) {
       const url = request.nextUrl.clone();
-      url.pathname = "/staff/login";
+      url.pathname = "/internal/login";
       return NextResponse.redirect(url);
     }
     const { data: teamRow } = await supabase.from("team_members").select("id").eq("id", user.id).maybeSingle();
     if (!teamRow) {
       const url = request.nextUrl.clone();
-      url.pathname = "/staff/login";
+      url.pathname = "/internal/login";
       return NextResponse.redirect(url);
     }
     return response;
   }
 
-  if (pathname.startsWith("/owner") && pathname !== "/owner/login") {
+  if (pathname.startsWith("/owner")) {
     if (!user) {
       const url = request.nextUrl.clone();
-      url.pathname = "/owner/login";
+      url.pathname = "/internal/login";
       return NextResponse.redirect(url);
     }
     const { data: ownerRow } = await supabase.from("owners").select("id").eq("id", user.id).maybeSingle();
     if (!ownerRow) {
       const url = request.nextUrl.clone();
-      url.pathname = "/owner/login";
+      url.pathname = "/internal/login";
       return NextResponse.redirect(url);
     }
     return response;

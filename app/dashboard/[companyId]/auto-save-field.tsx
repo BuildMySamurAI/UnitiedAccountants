@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { updateCompanyField, type EditableFieldKey } from "./actions";
+import { StatusPill } from "@/components/ui/status-pill";
 
 function CheckIcon({ done }: { done: boolean }) {
   return (
     <span
-      className={`mt-7 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+      className={`mt-7 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors ${
         done ? "bg-emerald-600 text-white" : "bg-slate-200"
       }`}
     >
@@ -66,26 +67,11 @@ export function AutoSaveField({
               if (status !== "saving") setStatus("idle");
             }}
             onBlur={handleBlur}
-            className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700/10 focus:border-emerald-600"
+            className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-700/10 focus:border-emerald-600"
           />
-          <span
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap ${
-              status === "saved"
-                ? "bg-emerald-50 text-emerald-700"
-                : status === "saving"
-                ? "bg-slate-100 text-slate-500"
-                : status === "error"
-                ? "bg-red-50 text-red-600"
-                : "bg-slate-50 text-slate-400"
-            }`}
-          >
-            {status === "saved" && "Saved"}
-            {status === "saving" && "Saving..."}
-            {status === "error" && "Error"}
-            {status === "idle" && "Unsaved"}
-          </span>
+          <StatusPill status={status} />
         </div>
-        {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+        {error && <p className="text-xs text-red-600 mt-1.5">{error}</p>}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
+  --background: #f7f8fa;
   --foreground: #0f172a;
 }
 
@@ -12,8 +12,15 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1200px 480px at 50% -10%, rgba(4, 120, 87, 0.05), transparent),
+    var(--background);
   color: var(--foreground);
 }
 
@@ -22,4 +29,14 @@ select,
 textarea {
   background: #ffffff;
   color: #0f172a;
+}
+
+::selection {
+  background: rgba(4, 120, 87, 0.16);
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
 }

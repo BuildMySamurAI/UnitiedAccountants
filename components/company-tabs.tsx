@@ -21,8 +21,8 @@ export function CompanyTabs({
             href={hrefFor(c.id)}
             className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
               active
-                ? "border-emerald-700 text-emerald-700"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                ? "border-emerald-700 text-emerald-800"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             }`}
           >
             {c.business_name ?? "Untitled company"}

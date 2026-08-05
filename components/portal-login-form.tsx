@@ -60,17 +60,17 @@ export function PortalLoginForm({
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
+    <main className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-700 text-white text-lg font-semibold mb-4">
+          <span className="flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white text-lg font-semibold mb-4 shadow-md shadow-emerald-900/20">
             UA
           </span>
-          <h1 className="text-xl font-semibold text-slate-900">United Accountants</h1>
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">United Accountants</h1>
           <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
         </div>
 
-        <Card className="p-6">
+        <Card className="p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Field
               label="Email"
@@ -79,6 +79,7 @@ export function PortalLoginForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
+              autoComplete="email"
             />
             <Field
               label="Password"
@@ -87,8 +88,13 @@ export function PortalLoginForm({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete="current-password"
             />
-            {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+            {error && (
+              <p className="text-sm text-red-700 bg-red-50 ring-1 ring-inset ring-red-100 rounded-lg px-3 py-2.5">
+                {error}
+              </p>
+            )}
             <Button type="submit" disabled={submitting} className="w-full">
               {submitting ? "Signing in..." : "Sign in"}
             </Button>

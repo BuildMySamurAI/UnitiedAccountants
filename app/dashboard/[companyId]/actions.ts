@@ -71,6 +71,14 @@ export async function recordDocumentUpload(
 ): Promise<ActionResult> {
   const supabase = await supabaseServer();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { ok: false, error: "Your session has expired. Please sign out and sign back in, then try again." };
+  }
+
   const { data: company, error: fetchError } = await supabase
     .from("companies")
     .select("ghl_opportunity_id")
@@ -89,6 +97,12 @@ export async function recordDocumentUpload(
   });
 
   if (insertError) {
+    // A stale/rotated session can pass the SELECT above but fail this
+    // INSERT's RLS check - surface a clear, actionable message rather than
+    // the raw Postgres error text.
+    if (insertError.code === "42501") {
+      return { ok: false, error: "Your session has expired. Please sign out and sign back in, then try again." };
+    }
     return { ok: false, error: insertError.message };
   }
 

@@ -92,10 +92,16 @@ export default async function CompanyPage({
       <Header userLabel={user.email ?? undefined} />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-700">
-          &larr; Back to companies
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to companies
         </Link>
-        <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-1">{businessName}</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight mt-2 mb-1">{businessName}</h1>
         <p className="text-sm text-slate-500 mb-4">
           Share a few business details and upload your documents below. Everything you submit
           reaches your accountant instantly.
@@ -108,22 +114,34 @@ export default async function CompanyPage({
         />
 
         <Card
-          className={`p-5 mb-8 flex items-center gap-3 ${
-            allDone ? "bg-emerald-50/60 border-emerald-200" : "bg-blue-50/60 border-blue-200"
+          className={`p-5 mb-8 flex items-center gap-4 ${
+            allDone ? "bg-emerald-50/60 border-emerald-200/80" : "bg-blue-50/60 border-blue-200/80"
           }`}
         >
-          <span className={allDone ? "text-emerald-600" : "text-blue-600"}>
-            <CheckCircleIcon />
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+              allDone ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"
+            }`}
+          >
+            <CheckCircleIcon className="h-6 w-6" />
           </span>
-          <div>
+          <div className="flex-1">
             <p className="font-medium text-slate-900">
               {allDone ? "Everything's submitted" : "A few things left to complete"}
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 mt-0.5">
               {allDone
                 ? "Your accountant has what they need. We'll reach out if anything else comes up."
                 : `${completed} of ${total} items complete - finish the rest below.`}
             </p>
+          </div>
+          <div className="hidden sm:block w-28 shrink-0">
+            <div className="h-1.5 rounded-full bg-white/70 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${allDone ? "bg-emerald-500" : "bg-blue-500"}`}
+                style={{ width: `${(completed / total) * 100}%` }}
+              />
+            </div>
           </div>
         </Card>
 
@@ -132,7 +150,7 @@ export default async function CompanyPage({
             <Card className="p-6">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-base font-semibold text-slate-900">Business details</h2>
-                <span className="text-sm text-slate-400">3/3</span>
+                <SectionCount done={checklist.slice(0, 3).filter(Boolean).length} total={3} />
               </div>
               <div className="divide-y divide-slate-100">
                 <AutoSaveField
@@ -159,9 +177,10 @@ export default async function CompanyPage({
             <Card className="p-6">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-base font-semibold text-slate-900">Documents</h2>
-                <span className="text-sm text-slate-400">
-                  {(formationDocs.length > 0 ? 1 : 0) + (identificationDocs.length > 0 ? 1 : 0)}/2
-                </span>
+                <SectionCount
+                  done={(formationDocs.length > 0 ? 1 : 0) + (identificationDocs.length > 0 ? 1 : 0)}
+                  total={2}
+                />
               </div>
               <div className="divide-y divide-slate-100">
                 <DocumentUploader
@@ -217,15 +236,18 @@ export default async function CompanyPage({
                   <ul className="space-y-1.5">
                     {SHARED_BOOKKEEPING_FILE_FIELDS.flatMap((f) =>
                       customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).map((entry, i) => (
-                        <li key={`${f.key}-${i}`} className="flex items-center justify-between text-sm">
-                          <span className="text-slate-500">
+                        <li
+                          key={`${f.key}-${i}`}
+                          className="flex items-center justify-between gap-3 text-sm bg-slate-50 rounded-lg px-3 py-1.5"
+                        >
+                          <span className="text-slate-600 truncate">
                             {f.label} - {entry.name}
                           </span>
                           <a
                             href={entry.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-emerald-700 hover:underline shrink-0 ml-3"
+                            className="text-emerald-700 hover:text-emerald-800 hover:underline shrink-0 font-medium"
                           >
                             View
                           </a>
@@ -295,10 +317,10 @@ export default async function CompanyPage({
             <Card className="p-5 flex items-center gap-4">
               <span
                 className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-                  allDone ? "text-emerald-600" : "text-slate-400"
+                  allDone ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
                 }`}
               >
-                <CheckCircleIcon className="h-10 w-10" />
+                <CheckCircleIcon className="h-7 w-7" />
               </span>
               <div>
                 <p className="font-medium text-slate-900">{allDone ? "All set" : "In progress"}</p>
@@ -306,10 +328,11 @@ export default async function CompanyPage({
                   {completed} of {total} items complete
                 </p>
                 <span
-                  className={`inline-block mt-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  className={`inline-flex items-center gap-1.5 mt-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                     allDone ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
                   }`}
                 >
+                  <span className={`h-1.5 w-1.5 rounded-full ${allDone ? "bg-emerald-500" : "bg-blue-500"}`} />
                   {allDone ? "Complete" : "In progress"}
                 </span>
               </div>
@@ -324,8 +347,8 @@ export default async function CompanyPage({
                 {notifications?.map((n, i) => (
                   <li key={n.id} className={i > 0 ? "pt-3 mt-3 border-t border-slate-100" : ""}>
                     <p className="text-sm font-medium text-slate-800">{n.title}</p>
-                    <p className="text-sm text-slate-500">{n.body}</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-sm text-slate-500 mt-0.5">{n.body}</p>
+                    <p className="text-xs text-slate-400 mt-1.5">
                       {new Date(n.created_at).toLocaleString()}
                     </p>
                   </li>
@@ -336,6 +359,19 @@ export default async function CompanyPage({
         </div>
       </main>
     </div>
+  );
+}
+
+function SectionCount({ done, total }: { done: number; total: number }) {
+  const complete = done === total;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+        complete ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+      }`}
+    >
+      {done}/{total}
+    </span>
   );
 }
 
@@ -351,11 +387,11 @@ function ReadOnlyGroup({
   return (
     <div className={last ? "" : "pb-6 border-b border-slate-100"}>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{title}</h3>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
         {rows.map(([label, value]) => (
           <div key={label} className="contents">
             <dt className="text-slate-500">{label}</dt>
-            <dd className={value ? "text-slate-900" : "text-slate-300"}>{value || "Not set"}</dd>
+            <dd className={value ? "text-slate-900 font-medium" : "text-slate-300"}>{value || "Not set"}</dd>
           </div>
         ))}
       </dl>

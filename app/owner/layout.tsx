@@ -19,10 +19,11 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     : { data: null };
 
   const ownerName = owner?.full_name ?? user?.email ?? "Owner";
+  const ownerEmail = user?.email ?? "";
 
   return (
     <div className={`console ${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}>
-      <Sidebar ownerName={ownerName} ownerInitials={initialsFor(ownerName)} />
+      <Sidebar ownerName={ownerName} ownerEmail={ownerEmail} ownerInitials={initialsFor(ownerName)} />
       <main>{children}</main>
     </div>
   );

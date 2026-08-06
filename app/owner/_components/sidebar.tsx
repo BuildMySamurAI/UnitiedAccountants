@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ConsoleLogout } from "./console-logout";
 
 function TodayIcon() {
   return (
@@ -90,7 +91,15 @@ const NAV = [
   },
 ];
 
-export function Sidebar({ ownerName, ownerInitials }: { ownerName: string; ownerInitials: string }) {
+export function Sidebar({
+  ownerName,
+  ownerEmail,
+  ownerInitials,
+}: {
+  ownerName: string;
+  ownerEmail: string;
+  ownerInitials: string;
+}) {
   const pathname = usePathname();
 
   return (
@@ -121,10 +130,13 @@ export function Sidebar({ ownerName, ownerInitials }: { ownerName: string; owner
 
       <div className="who">
         <div className="av">{ownerInitials}</div>
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <b>{ownerName}</b>
-          <i>Owner</i>
+          <i style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ownerEmail}>
+            {ownerEmail}
+          </i>
         </div>
+        <ConsoleLogout />
       </div>
     </aside>
   );

@@ -10,7 +10,10 @@ export default function LogoutButton() {
   async function handleLogout() {
     const supabase = supabaseBrowser();
     await supabase.auth.signOut();
-    router.push("/login");
+    // "/" is host-aware (see app/page.tsx + middleware): it lands on /login
+    // for the client domain and /internal/login for the owner/team domain,
+    // so this one redirect is correct from every portal.
+    router.push("/");
     router.refresh();
   }
 

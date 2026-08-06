@@ -201,3 +201,61 @@ export async function setOpportunityFileField(
     }),
   });
 }
+
+export type GhlConversation = {
+  id: string;
+  contactId: string;
+  contactName?: string;
+  email?: string;
+  lastMessageBody?: string;
+  lastMessageDate?: number;
+  lastMessageType?: string;
+  lastMessageDirection?: "inbound" | "outbound";
+  unreadCount?: number;
+};
+
+// Conversations belong to the GHL contact (person), not to an opportunity -
+// a client with multiple companies has one shared thread across all of them,
+// there is no per-opportunity scoping available from this API.
+export async function searchConversations(params?: { contactId?: string; limit?: number }): Promise<GhlConversation[]> {
+  const q = new URLSearchParams({
+    locationId: GHL_LOCATION_ID,
+    limit: String(params?.limit ?? 100),
+  });
+  if (params?.contactId) q.set("contactId", params.contactId);
+  const data = await ghlFetch(`/conversations/search?${q.toString()}`);
+  return data.conversations ?? [];
+}
+
+export type GhlMessage = {
+  id: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  contactId: string;
+  dateAdded: string;
+  messageType: string;
+};
+
+export async function getConversationMessages(conversationId: string): Promise<GhlMessage[]> {
+  const data = await ghlFetch(`/conversations/${conversationId}/messages`);
+  return data.messages?.messages ?? [];
+}
+
+// Sends a real outbound SMS or Email to the contact via GHL. Only read
+// access to Conversations was verified while planning this feature - this
+// is the first real send-path exercise, so treat failures here as a scope
+// question (token permissions) rather than a bug until confirmed live.
+export async function sendConversationMessage(input: {
+  contactId: string;
+  type: "SMS" | "Email";
+  message: string;
+}) {
+  return ghlFetch("/conversations/messages", {
+    method: "POST",
+    body: JSON.stringify({
+      type: input.type,
+      contactId: input.contactId,
+      message: input.message,
+    }),
+  });
+}

@@ -4,6 +4,25 @@ export const PIPELINE_NEW_CORP_ONBOARDING = process.env.GHL_PIPELINE_ID_NEW_CORP
 export const STAGE_CLIENT_ONBOARDING = process.env.GHL_STAGE_ID_CLIENT_ONBOARDING!;
 export const STAGE_ACTIVE_CLIENT = process.env.GHL_STAGE_ID_ACTIVE_CLIENT!;
 
+// Full, ordered stage list for the "New Corporation Onboarding" pipeline -
+// confirmed live against GET /opportunities/pipelines. Only the first and
+// last stage had env vars (used by the onboarding automation and the
+// monthly bookkeeping reset cron); the other four are only needed for
+// display (Owner Portal pipeline board / stage-progress UI), so they're
+// plain constants rather than more env vars.
+export const PIPELINE_STAGES: { id: string; name: string }[] = [
+  { id: STAGE_CLIENT_ONBOARDING, name: "Client Onboarding" },
+  { id: "c87d3617-5254-4dc8-8e51-e7e52771ac84", name: "Sunbiz Filed" },
+  { id: "ed62c2e6-5d2b-4b77-abc3-cbc019670e15", name: "EIN Applied" },
+  { id: "adb1f932-c97e-4305-8901-03675f9d2511", name: "Tax Registrations In Progress" },
+  { id: "08555784-1bd3-46a6-b028-7c2cc5af3a1b", name: "QC Review" },
+  { id: STAGE_ACTIVE_CLIENT, name: "Active Client" },
+];
+
+export const STAGE_NAME_BY_ID: Record<string, string> = Object.fromEntries(
+  PIPELINE_STAGES.map((s) => [s.id, s.name])
+);
+
 // Opportunity ("Company" folder) custom field IDs - the full set that exists in GHL today.
 export const OPPORTUNITY_FIELDS = {
   businessName: "mEvLRfYUrxzyDjVhAtvJ",

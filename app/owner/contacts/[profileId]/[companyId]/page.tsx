@@ -8,8 +8,8 @@ import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "
 import { StaffField } from "@/app/staff/[profileId]/[companyId]/staff-field";
 import { StaffDocument } from "@/app/staff/[profileId]/[companyId]/staff-document";
 import { StaffDocumentMulti } from "@/app/staff/[profileId]/[companyId]/staff-document-multi";
-import { ConsoleTopBar, Pill, StageProgress } from "../../../_components/ui";
-import { EntitySwitch } from "../../../_components/entity-switch";
+import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
+import { EntitySwitch } from "@/components/console/entity-switch";
 import { AssignSelect } from "../../../assign-select";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
@@ -66,6 +66,7 @@ export default async function CompanyDetailPage({
   return (
     <>
       <ConsoleTopBar
+        searchAction="/owner/contacts"
         crumbs={[
           { label: "Contacts", href: "/owner/contacts" },
           { label: clientName, href: `/owner/contacts/${profileId}` },

@@ -1,5 +1,5 @@
 import { supabaseServer } from "@/lib/supabase/server";
-import { ConsoleTopBar, Avatar, EmptyState } from "../_components/ui";
+import { ConsoleTopBar, Avatar, EmptyState } from "@/components/console/ui";
 import { InviteTeamMemberForm } from "../invite-form";
 
 export default async function TeamPage() {
@@ -12,7 +12,7 @@ export default async function TeamPage() {
 
   return (
     <>
-      <ConsoleTopBar crumbs={[{ label: "Team" }]} />
+      <ConsoleTopBar searchAction="/owner/contacts" crumbs={[{ label: "Team" }]} />
       <div className="wrap">
         <h2 className="page">Team</h2>
         <p className="sub">{teamMembers?.length ?? 0} team members invited</p>

@@ -1,23 +1,23 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getContact } from "@/lib/ghl/client";
-import { CONTACT_FIELDS } from "@/lib/ghl/constants";
-import { Header } from "@/components/header";
-import { Card } from "@/components/ui/card";
-import { StageBadge } from "@/components/ui/badge";
-import { ClientSwitcher } from "@/components/client-switcher";
+import { searchConversations, getConversationMessages, type GhlMessage } from "@/lib/ghl/client";
+import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/components/console/ui";
+import { ContactTabs } from "@/components/console/contact-tabs";
+import { CommunicationPanel } from "@/components/console/communication-panel";
 
-export default async function StaffClientDetailPage({
-  params,
-}: {
-  params: Promise<{ profileId: string }>;
-}) {
+const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
+  "Client Onboarding": "b",
+  "Sunbiz Filed": "b",
+  "EIN Applied": "b",
+  "Tax Registrations In Progress": "a",
+  "QC Review": "a",
+  "Active Client": "g",
+};
+
+export default async function StaffClientDetailPage({ params }: { params: Promise<{ profileId: string }> }) {
   const { profileId } = await params;
   const supabase = await supabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -27,96 +27,90 @@ export default async function StaffClientDetailPage({
 
   if (!profile) notFound();
 
+  // RLS restricts this to companies assigned to the logged-in team member,
+  // so this is exactly (and only) what they're allowed to see for this client.
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, business_name, pipeline_stage, created_at")
+    .select("id, business_name, pipeline_stage")
     .eq("profile_id", profileId)
     .order("created_at", { ascending: true });
 
-  // RLS already restricts this to companies assigned to the logged-in team
-  // member, so the distinct profiles here are exactly their assigned clients.
-  const { data: assignedCompanies } = await supabase
-    .from("companies")
-    .select("profile_id, profiles(id, first_name, last_name)")
-    .order("created_at", { ascending: true });
+  // Without at least one assigned company, this client is out of scope for
+  // this team member entirely - including their conversation history, which
+  // is fetched below and isn't itself company-scoped in GHL.
+  if (!companies || companies.length === 0) notFound();
 
-  const clientOptions = Array.from(
-    new Map(
-      (assignedCompanies ?? []).map((c) => {
-        const p = c.profiles as unknown as { id: string; first_name: string; last_name: string } | null;
-        return [c.profile_id, { id: c.profile_id, label: p ? `${p.first_name} ${p.last_name}` : c.profile_id }];
-      })
-    ).values()
-  );
-
-  let portalAccountStatus = "Unknown";
-  try {
-    const contact = profile.ghl_contact_id ? await getContact(profile.ghl_contact_id) : null;
-    const match = contact?.customFields?.find((f: { id: string }) => f.id === CONTACT_FIELDS.portalAccountCreated);
-    portalAccountStatus = (match?.value ?? match?.fieldValue) === "Yes" ? "Active" : "Not created";
-  } catch {
-    // GHL contact lookup failed - not fatal, just show unknown status
+  let messages: GhlMessage[] = [];
+  if (profile.ghl_contact_id) {
+    try {
+      const conversations = await searchConversations({ contactId: profile.ghl_contact_id });
+      const perConversation = await Promise.all(conversations.map((c) => getConversationMessages(c.id)));
+      messages = perConversation.flat();
+    } catch {
+      messages = [];
+    }
   }
 
-  return (
-    <div className="min-h-screen">
-      <Header userLabel={user?.email ?? undefined} subtitle="Team Portal" />
+  const name = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || profile.email || "Unnamed";
+  const companyList = companies ?? [];
 
-      <main className="mx-auto max-w-4xl px-6 py-10">
-        <div className="flex items-center justify-between">
-          <Link href="/staff" className="text-sm text-slate-500 hover:text-slate-700">
-            &larr; All clients
-          </Link>
-          {clientOptions.length > 1 && (
-            <ClientSwitcher clients={clientOptions} activeId={profileId} basePath="/staff" />
-          )}
-        </div>
-        <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-6">
-          {profile.first_name} {profile.last_name}
-        </h1>
-
-        <Card className="p-6 mb-8">
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            <div>
-              <dt className="text-slate-500">Email</dt>
-              <dd className="text-slate-900">{profile.email}</dd>
+  const companiesPanel = (
+    <div className="ccard">
+      <header>
+        <h3>Companies</h3>
+        <span className="hint">{companyList.length} assigned to you</span>
+      </header>
+      {companyList.length === 0 && <EmptyState title="No companies assigned yet" />}
+      {companyList.map((c) => (
+        <Link key={c.id} href={`/staff/${profileId}/${c.id}`} className="rl click" style={{ color: "inherit" }}>
+          <div>
+            <div className="name">{c.business_name}</div>
+            <div className="y" style={{ marginTop: 4 }}>
+              {c.pipeline_stage ? <Pill variant={STAGE_PILL[c.pipeline_stage] ?? "n"}>{c.pipeline_stage}</Pill> : <Pill variant="n">Unknown</Pill>}
             </div>
-            <div>
-              <dt className="text-slate-500">Phone</dt>
-              <dd className="text-slate-900">{profile.phone || "Not set"}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Portal account</dt>
-              <dd className="text-slate-900">{portalAccountStatus}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Client since</dt>
-              <dd className="text-slate-900">{new Date(profile.created_at).toLocaleDateString()}</dd>
-            </div>
-          </dl>
-        </Card>
-
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-slate-900">Companies</h2>
-          <span className="text-sm text-slate-400">{companies?.length ?? 0}</span>
-        </div>
-
-        <div className="grid gap-3">
-          {companies?.map((c) => (
-            <Link key={c.id} href={`/staff/${profileId}/${c.id}`}>
-              <Card className="p-5 flex items-center justify-between hover:border-slate-300 hover:shadow-md transition-all">
-                <p className="font-medium text-slate-900">{c.business_name}</p>
-                <StageBadge stage={c.pipeline_stage} />
-              </Card>
-            </Link>
-          ))}
-          {companies && companies.length === 0 && (
-            <Card className="p-10 text-center">
-              <p className="text-slate-500">No companies yet.</p>
-            </Card>
-          )}
-        </div>
-      </main>
+          </div>
+        </Link>
+      ))}
     </div>
+  );
+
+  return (
+    <>
+      <ConsoleTopBar searchAction="/staff" crumbs={[{ label: "My Clients", href: "/staff" }, { label: name }]} />
+      <div className="wrap">
+        <div className="hero">
+          <Avatar name={name} id={profile.id} size="lg" />
+          <div style={{ minWidth: 0 }}>
+            <h2>
+              {name}
+              <MultiEntityBadge count={companyList.length} />
+            </h2>
+            <div className="line">
+              {profile.email}
+              {profile.phone ? ` · ${profile.phone}` : ""} · client since {new Date(profile.created_at).getFullYear()}
+            </div>
+          </div>
+          <div className="acts">
+            {profile.phone && (
+              <a className="cbtn ghost" href={`tel:${profile.phone}`}>
+                Call
+              </a>
+            )}
+            {profile.email && (
+              <a className="cbtn ghost" href={`mailto:${profile.email}`}>
+                Email
+              </a>
+            )}
+          </div>
+        </div>
+
+        <ContactTabs
+          companiesCount={companyList.length}
+          messagesCount={messages.length}
+          companiesPanel={companiesPanel}
+          communicationPanel={<CommunicationPanel contactId={profile.ghl_contact_id ?? ""} messages={messages} />}
+        />
+      </div>
+    </>
   );
 }

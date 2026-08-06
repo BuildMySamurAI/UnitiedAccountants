@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { sendContactMessage } from "./actions";
-import { EmptyState } from "../../_components/ui";
+import { sendContactMessage } from "@/lib/ghl/conversation-actions";
+import { EmptyState } from "@/components/console/ui";
 import type { GhlMessage } from "@/lib/ghl/client";
 
 function channelFor(messageType: string): { label: string; cls: string } {
@@ -54,7 +54,7 @@ export function CommunicationPanel({ contactId, messages }: { contactId: string;
                   <div className="b">{m.body}</div>
                   <div className="t">
                     <span className={`ch ${ch.cls}`}>{ch.label}</span>
-                    {new Date(m.dateAdded).toLocaleString()}
+                    {new Date(m.dateAdded).toLocaleString("en-US")}
                   </div>
                 </div>
               </div>

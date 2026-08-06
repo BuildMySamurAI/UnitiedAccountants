@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getAllOpportunitiesInPipeline } from "@/lib/ghl/client";
 import { PIPELINE_NEW_CORP_ONBOARDING, PIPELINE_STAGES } from "@/lib/ghl/constants";
-import { ConsoleTopBar, EmptyState } from "../_components/ui";
+import { ConsoleTopBar, EmptyState } from "@/components/console/ui";
 
 const DOT: Record<string, string> = {
   "Client Onboarding": "var(--ink-3)",
@@ -47,7 +47,7 @@ export default async function PipelinePage() {
 
   return (
     <>
-      <ConsoleTopBar crumbs={[{ label: "Pipeline" }]} />
+      <ConsoleTopBar searchAction="/owner/contacts" crumbs={[{ label: "Pipeline" }]} />
       <div className="wrap">
         <h2 className="page">Pipeline</h2>
         <p className="sub">

@@ -3,7 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS, PIPELINE_STAGES } from "@/lib/ghl/constants";
-import { ConsoleTopBar, StatCard, EmptyState } from "./_components/ui";
+import { ConsoleTopBar, StatCard, EmptyState } from "@/components/console/ui";
 
 export default async function TodayPage() {
   const supabase = await supabaseServer();
@@ -80,7 +80,7 @@ export default async function TodayPage() {
 
   return (
     <>
-      <ConsoleTopBar crumbs={[{ label: "Today" }]} />
+      <ConsoleTopBar searchAction="/owner/contacts" crumbs={[{ label: "Today" }]} />
       <div className="wrap">
         <h2 className="page">Good day</h2>
         <p className="sub">

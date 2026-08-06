@@ -1,12 +1,30 @@
-import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 import { supabaseServer } from "@/lib/supabase/server";
-import { Sidebar } from "./_components/sidebar";
-import { initialsFor } from "./_components/ui";
-import "./console.css";
+import { ConsoleShell } from "@/components/console/console-shell";
+import { initialsFor } from "@/components/console/ui";
+import type { NavGroup } from "@/components/console/sidebar";
 
-const inter = Inter({ subsets: ["latin"], variable: "--console-font-sans" });
-const fraunces = Fraunces({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--console-font-serif" });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--console-font-mono" });
+const NAV_GROUPS: NavGroup[] = [
+  {
+    group: "Practice",
+    items: [
+      { href: "/owner", label: "Today", icon: "today", exact: true },
+      { href: "/owner/contacts", label: "Contacts", icon: "contacts" },
+      { href: "/owner/communication", label: "Communication", icon: "inbox" },
+      { href: "/owner/pipeline", label: "Pipeline", icon: "pipeline" },
+    ],
+  },
+  {
+    group: "Compliance",
+    items: [
+      { href: "/owner/documents", label: "Documents", icon: "docs" },
+      { href: "/owner/filings", label: "Filing calendar", icon: "filings" },
+    ],
+  },
+  {
+    group: "Admin",
+    items: [{ href: "/owner/team", label: "Team", icon: "team" }],
+  },
+];
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   const supabase = await supabaseServer();
@@ -19,12 +37,10 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     : { data: null };
 
   const ownerName = owner?.full_name ?? user?.email ?? "Owner";
-  const ownerEmail = user?.email ?? "";
 
   return (
-    <div className={`console ${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}>
-      <Sidebar ownerName={ownerName} ownerEmail={ownerEmail} ownerInitials={initialsFor(ownerName)} />
-      <main>{children}</main>
-    </div>
+    <ConsoleShell subtitle="Practice Console" navGroups={NAV_GROUPS} userName={ownerName} userEmail={user?.email ?? ""} userInitials={initialsFor(ownerName)}>
+      {children}
+    </ConsoleShell>
   );
 }

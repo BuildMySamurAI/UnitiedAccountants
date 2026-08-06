@@ -5,7 +5,7 @@ import { customFieldFileUrl, customFieldFileUrls } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
-import { ConsoleTopBar, Pill, EmptyState } from "../_components/ui";
+import { ConsoleTopBar, Pill, EmptyState } from "@/components/console/ui";
 
 type Row = {
   key: string;
@@ -90,7 +90,7 @@ export default async function DocumentsPage() {
 
   return (
     <>
-      <ConsoleTopBar crumbs={[{ label: "Documents" }]} />
+      <ConsoleTopBar searchAction="/owner/contacts" crumbs={[{ label: "Documents" }]} />
       <div className="wrap">
         <h2 className="page">Documents</h2>
         <p className="sub">

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { Header } from "@/components/header";
-import { Card } from "@/components/ui/card";
+import { ConsoleTopBar, Avatar, MultiEntityBadge, EmptyState } from "@/components/console/ui";
 
 export default async function StaffClientsPage({
   searchParams,
@@ -10,66 +9,84 @@ export default async function StaffClientsPage({
 }) {
   const { q } = await searchParams;
   const supabase = await supabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, email, companies(id)")
     .order("created_at", { ascending: false });
 
+  // profiles itself isn't scoped by assignment, only the embedded companies
+  // join is (via RLS) - drop anyone with zero assigned companies so this
+  // list, and every link on it, stays within this team member's scope.
+  const assigned = profiles?.filter((p) => (p.companies?.length ?? 0) > 0);
+
   const filtered = q
-    ? profiles?.filter((p) => {
+    ? assigned?.filter((p) => {
         const hay = `${p.first_name ?? ""} ${p.last_name ?? ""} ${p.email ?? ""}`.toLowerCase();
         return hay.includes(q.toLowerCase());
       })
-    : profiles;
+    : assigned;
 
   return (
-    <div className="min-h-screen">
-      <Header userLabel={user?.email ?? undefined} subtitle="Team Portal" />
+    <>
+      <ConsoleTopBar crumbs={[{ label: "My Clients" }]} searchAction="/staff" searchDefault={q} searchPlaceholder="Search your clients..." />
+      <div className="wrap">
+        <h2 className="page">My Clients</h2>
+        <p className="sub">{filtered?.length ?? 0} clients with companies assigned to you.</p>
 
-      <main className="mx-auto max-w-4xl px-6 py-10">
-        <h1 className="text-2xl font-semibold text-slate-900 mb-1">Clients</h1>
-        <p className="text-sm text-slate-500 mb-6">{filtered?.length ?? 0} clients</p>
-
-        <form className="mb-6">
-          <input
-            type="text"
-            name="q"
-            defaultValue={q}
-            placeholder="Search by name or email..."
-            className="w-full max-w-md rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700/10 focus:border-emerald-600"
-          />
-        </form>
-
-        {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3">{error.message}</p>}
-
-        {filtered && filtered.length === 0 && (
-          <Card className="p-10 text-center">
-            <p className="text-slate-500">No clients found.</p>
-          </Card>
+        {error && (
+          <p style={{ fontSize: 13, color: "var(--red)", background: "var(--red-soft)", borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
+            {error.message}
+          </p>
         )}
 
-        <div className="grid gap-3">
-          {filtered?.map((p) => (
-            <Link key={p.id} href={`/staff/${p.id}`}>
-              <Card className="p-5 flex items-center justify-between hover:border-slate-300 hover:shadow-md transition-all">
-                <div>
-                  <p className="font-medium text-slate-900">
-                    {p.first_name} {p.last_name}
-                  </p>
-                  <p className="text-sm text-slate-500">{p.email}</p>
-                </div>
-                <span className="text-sm text-slate-400 shrink-0 ml-3">
-                  {p.companies?.length ?? 0} compan{p.companies?.length === 1 ? "y" : "ies"}
-                </span>
-              </Card>
-            </Link>
-          ))}
+        <div className="ccard">
+          <header>
+            <h3>Clients</h3>
+            <span className="hint">{filtered?.length ?? 0} shown</span>
+          </header>
+          <table>
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <th>Companies</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered?.map((p) => {
+                const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Unnamed";
+                const count = p.companies?.length ?? 0;
+                return (
+                  <tr key={p.id} className="click">
+                    <td>
+                      <Link href={`/staff/${p.id}`} className="person" style={{ color: "inherit" }}>
+                        <Avatar name={name} id={p.id} />
+                        <div>
+                          <div className="name">
+                            {name}
+                            <MultiEntityBadge count={count} />
+                          </div>
+                          <div className="meta">{p.email}</div>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="mono">
+                      {count} compan{count === 1 ? "y" : "ies"}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={2}>
+                    <EmptyState title="No clients found" />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

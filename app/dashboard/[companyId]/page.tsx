@@ -1,21 +1,13 @@
-import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
+import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue, customFieldFileUrls } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
-import { Header } from "@/components/header";
-import { Card } from "@/components/ui/card";
-import { CompanyTabs } from "@/components/company-tabs";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
+import { ConsoleTopBar, EmptyState } from "@/components/console/ui";
+import { EntitySwitch } from "@/components/console/entity-switch";
 import { AutoSaveField } from "./auto-save-field";
 import DocumentUploader from "./document-uploader";
-
-const CheckCircleIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
 
 export default async function CompanyPage({
   params,
@@ -28,7 +20,6 @@ export default async function CompanyPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
   const { data: company } = await supabase
     .from("companies")
@@ -66,14 +57,14 @@ export default async function CompanyPage({
   const { data: notifications } = await supabase
     .from("notifications")
     .select("id, title, body, created_at")
-    .eq("profile_id", user.id)
+    .eq("profile_id", user!.id)
     .order("created_at", { ascending: false })
     .limit(5);
 
   const { data: siblingCompanies } = await supabase
     .from("companies")
-    .select("id, business_name")
-    .eq("profile_id", user.id)
+    .select("id, business_name, pipeline_stage")
+    .eq("profile_id", user!.id)
     .order("created_at", { ascending: true });
 
   const checklist = [
@@ -87,314 +78,195 @@ export default async function CompanyPage({
   const total = checklist.length;
   const allDone = completed === total;
 
+  const facts: [string, string | undefined][] = [
+    ["Sunbiz Filing Confirmation", field("sunbizFilingConfirmation")],
+    ["Sunbiz Tracking Number", field("sunbizTrackingNumber")],
+    ["Sunbiz Filing Date", field("sunbizFilingDate")],
+    ["EIN", field("ein")],
+    ["Sales Tax Certificate Number", field("salesTaxCertificateNumber")],
+    ["Business Partner Number", field("businessPartnerNumber")],
+    ["Sales Tax Filing Frequency", field("salesTaxFilingFrequency")],
+    ["Sales Tax Submission Date", field("salesTaxSubmissionDate")],
+    ["eFileSalesTax Username", field("efileSalesTaxUsername")],
+    ["eFileSalesTax Registration Status", field("efileSalesTaxRegistrationStatus")],
+    ["RT Account Number", field("rtAccountNumber")],
+    ["RT Filing Frequency", field("rtFilingFrequency")],
+    ["RT Submission Date", field("rtSubmissionDate")],
+    ["Payroll Setup Completion", field("surePayrollSetupCompletion")],
+    ["Payroll Deposit Schedule", field("surePayrollDepositSchedule")],
+    ["Payroll Filing Frequency", field("payrollFilingFrequency")],
+    ["Payroll Processing Date", field("payrollProcessingDate")],
+  ];
+
   return (
-    <div className="min-h-screen">
-      <Header userLabel={user.email ?? undefined} />
+    <>
+      <ConsoleTopBar crumbs={[{ label: "My Companies", href: "/dashboard" }, { label: businessName }]} />
+      <div className="wrap">
+        <h2 className="page">{businessName}</h2>
+        <p className="sub">Share a few business details and upload your documents below. Everything you submit reaches your accountant instantly.</p>
 
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to companies
-        </Link>
-        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight mt-2 mb-1">{businessName}</h1>
-        <p className="text-sm text-slate-500 mb-4">
-          Share a few business details and upload your documents below. Everything you submit
-          reaches your accountant instantly.
-        </p>
-
-        <CompanyTabs
+        <EntitySwitch
+          ownerName="you"
           companies={siblingCompanies ?? []}
           activeId={company.id}
           hrefFor={(id) => `/dashboard/${id}`}
         />
 
-        <Card
-          className={`p-5 mb-8 flex items-center gap-4 ${
-            allDone ? "bg-emerald-50/60 border-emerald-200/80" : "bg-blue-50/60 border-blue-200/80"
-          }`}
-        >
-          <span
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-              allDone ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"
-            }`}
-          >
-            <CheckCircleIcon className="h-6 w-6" />
-          </span>
-          <div className="flex-1">
-            <p className="font-medium text-slate-900">
-              {allDone ? "Everything's submitted" : "A few things left to complete"}
-            </p>
-            <p className="text-sm text-slate-600 mt-0.5">
-              {allDone
-                ? "Your accountant has what they need. We'll reach out if anything else comes up."
-                : `${completed} of ${total} items complete - finish the rest below.`}
-            </p>
-          </div>
-          <div className="hidden sm:block w-28 shrink-0">
-            <div className="h-1.5 rounded-full bg-white/70 overflow-hidden">
+        <div className="ccard" style={{ marginBottom: 16, background: allDone ? "var(--green-soft)" : "var(--blue-soft)" }}>
+          <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 600, color: "var(--ink)" }}>{allDone ? "Everything's submitted" : "A few things left to complete"}</p>
+              <p style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 3 }}>
+                {allDone
+                  ? "Your accountant has what they need. We'll reach out if anything else comes up."
+                  : `${completed} of ${total} items complete - finish the rest below.`}
+              </p>
+            </div>
+            <div style={{ width: 110, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.6)", overflow: "hidden", flexShrink: 0 }}>
               <div
-                className={`h-full rounded-full transition-all ${allDone ? "bg-emerald-500" : "bg-blue-500"}`}
-                style={{ width: `${(completed / total) * 100}%` }}
+                style={{
+                  height: "100%",
+                  borderRadius: 3,
+                  background: allDone ? "var(--green)" : "var(--blue)",
+                  width: `${(completed / total) * 100}%`,
+                }}
               />
             </div>
           </div>
-        </Card>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-base font-semibold text-slate-900">Business details</h2>
-                <SectionCount done={checklist.slice(0, 3).filter(Boolean).length} total={3} />
-              </div>
-              <div className="divide-y divide-slate-100">
-                <AutoSaveField
-                  companyId={company.id}
-                  fieldKey="businessName"
-                  label="Legal business name"
-                  initialValue={businessName ?? ""}
-                />
-                <AutoSaveField
-                  companyId={company.id}
-                  fieldKey="mailingAddress"
-                  label="Mailing address"
-                  initialValue={mailingAddress}
-                />
-                <AutoSaveField
-                  companyId={company.id}
-                  fieldKey="physicalAddress"
-                  label="Physical address"
-                  initialValue={physicalAddress}
-                />
-              </div>
-            </Card>
+        <div className="detail">
+          <div>
+            <div className="ccard" style={{ marginBottom: 16 }}>
+              <header>
+                <h3>Business details</h3>
+                <span className="hint">{checklist.slice(0, 3).filter(Boolean).length}/3</span>
+              </header>
+              <AutoSaveField companyId={company.id} fieldKey="businessName" label="Legal business name" initialValue={businessName ?? ""} />
+              <AutoSaveField companyId={company.id} fieldKey="mailingAddress" label="Mailing address" initialValue={mailingAddress} />
+              <AutoSaveField companyId={company.id} fieldKey="physicalAddress" label="Physical address" initialValue={physicalAddress} />
+            </div>
 
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-base font-semibold text-slate-900">Documents</h2>
-                <SectionCount
-                  done={(formationDocs.length > 0 ? 1 : 0) + (identificationDocs.length > 0 ? 1 : 0)}
-                  total={2}
-                />
-              </div>
-              <div className="divide-y divide-slate-100">
-                <DocumentUploader
-                  companyId={company.id}
-                  fieldKey="formation_documents"
-                  label="Formation Documents"
-                  existing={formationDocs}
-                />
-                <DocumentUploader
-                  companyId={company.id}
-                  fieldKey="identification_documents"
-                  label="Identification Documents"
-                  existing={identificationDocs}
-                />
-              </div>
+            <div className="ccard" style={{ marginBottom: 16 }}>
+              <header>
+                <h3>Documents</h3>
+                <span className="hint">{(formationDocs.length > 0 ? 1 : 0) + (identificationDocs.length > 0 ? 1 : 0)}/2</span>
+              </header>
+              <DocumentUploader companyId={company.id} fieldKey="formation_documents" label="Formation Documents" existing={formationDocs} />
+              <DocumentUploader companyId={company.id} fieldKey="identification_documents" label="Identification Documents" existing={identificationDocs} />
               {einConfirmationLetterUrl && (
-                <div className="pt-4 mt-1 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-800">EIN Confirmation Letter</span>
-                  <a
-                    href={einConfirmationLetterUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
-                  >
-                    View
-                  </a>
+                <div className="doc have">
+                  <div className="ic">PDF</div>
+                  <div style={{ flex: 1 }}>
+                    <div className="nm">EIN Confirmation Letter</div>
+                  </div>
+                  <div className="rt">
+                    <a href={einConfirmationLetterUrl} target="_blank" rel="noopener noreferrer" className="cbtn ghost">
+                      View
+                    </a>
+                  </div>
                 </div>
               )}
-            </Card>
+            </div>
 
             {bookkeepingCycleOpen && (
-              <Card className="p-6">
-                <h2 className="text-base font-semibold text-slate-900 mb-1">Monthly Bookkeeping Documents</h2>
-                <p className="text-sm text-slate-500 mb-3">
-                  Upload this month's statements - available until your accountant locks the month.
-                </p>
-                <div className="divide-y divide-slate-100">
-                  {CLIENT_BOOKKEEPING_FILE_FIELDS.map((f) => (
-                    <DocumentUploader
-                      key={f.fieldKey}
-                      companyId={company.id}
-                      fieldKey={f.fieldKey}
-                      label={f.label}
-                      existing={files?.filter((file) => file.field_key === f.fieldKey) ?? []}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+              <div className="ccard" style={{ marginBottom: 16 }}>
+                <header>
+                  <h3>Monthly Bookkeeping Documents</h3>
+                  <span className="hint">cycle open</span>
+                </header>
+                {CLIENT_BOOKKEEPING_FILE_FIELDS.map((f) => (
+                  <DocumentUploader
+                    key={f.fieldKey}
+                    companyId={company.id}
+                    fieldKey={f.fieldKey}
+                    label={f.label}
+                    existing={files?.filter((file) => file.field_key === f.fieldKey) ?? []}
+                  />
+                ))}
+                <div style={{ padding: "12px 15px", borderTop: "1px solid var(--rule-soft)" }}>
+                  <h4 style={{ fontFamily: "var(--console-font-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--ink-3)", marginBottom: 8 }}>
                     Provided by your accountant (view only)
-                  </h3>
-                  <ul className="space-y-1.5">
-                    {SHARED_BOOKKEEPING_FILE_FIELDS.flatMap((f) =>
-                      customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).map((entry, i) => (
-                        <li
-                          key={`${f.key}-${i}`}
-                          className="flex items-center justify-between gap-3 text-sm bg-slate-50 rounded-lg px-3 py-1.5"
-                        >
-                          <span className="text-slate-600 truncate">
-                            {f.label} - {entry.name}
-                          </span>
-                          <a
-                            href={entry.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-emerald-700 hover:text-emerald-800 hover:underline shrink-0 font-medium"
-                          >
+                  </h4>
+                  {SHARED_BOOKKEEPING_FILE_FIELDS.flatMap((f) =>
+                    customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).map((entry, i) => (
+                      <div key={`${f.key}-${i}`} className="doc have">
+                        <div className="ic">PDF</div>
+                        <div style={{ flex: 1 }}>
+                          <div className="nm">{f.label}</div>
+                          <div className="mt">{entry.name}</div>
+                        </div>
+                        <div className="rt">
+                          <a href={entry.url} target="_blank" rel="noopener noreferrer" className="cbtn ghost">
                             View
                           </a>
-                        </li>
-                      ))
-                    )}
-                    {SHARED_BOOKKEEPING_FILE_FIELDS.every(
-                      (f) => customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).length === 0
-                    ) && <p className="text-sm text-slate-400">Nothing here yet.</p>}
-                  </ul>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {SHARED_BOOKKEEPING_FILE_FIELDS.every((f) => customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).length === 0) && (
+                    <p style={{ fontSize: 12, color: "var(--ink-3)" }}>Nothing here yet.</p>
+                  )}
                 </div>
-              </Card>
+              </div>
             )}
 
-            <Card className="p-6">
-              <h2 className="text-base font-semibold text-slate-900 mb-1">Filing status</h2>
-              <p className="text-sm text-slate-500 mb-4">Maintained by your accountant - view only</p>
-              <div className="space-y-6">
-                <ReadOnlyGroup
-                  title="Sunbiz"
-                  rows={[
-                    ["Filing Confirmation", field("sunbizFilingConfirmation")],
-                    ["Tracking Number", field("sunbizTrackingNumber")],
-                    ["Filing Date", field("sunbizFilingDate")],
-                  ]}
-                />
-                <ReadOnlyGroup title="EIN" rows={[["EIN", field("ein")]]} />
-                <ReadOnlyGroup
-                  title="Sales Tax"
-                  rows={[
-                    ["Certificate Number", field("salesTaxCertificateNumber")],
-                    ["Business Partner Number", field("businessPartnerNumber")],
-                    ["Filing Frequency", field("salesTaxFilingFrequency")],
-                    ["Submission Date", field("salesTaxSubmissionDate")],
-                  ]}
-                />
-                <ReadOnlyGroup
-                  title="eFileSalesTax"
-                  rows={[
-                    ["Username", field("efileSalesTaxUsername")],
-                    ["Registration Status", field("efileSalesTaxRegistrationStatus")],
-                  ]}
-                />
-                <ReadOnlyGroup
-                  title="Reemployment Tax (RT)"
-                  rows={[
-                    ["Account Number", field("rtAccountNumber")],
-                    ["Filing Frequency", field("rtFilingFrequency")],
-                    ["Submission Date", field("rtSubmissionDate")],
-                  ]}
-                />
-                <ReadOnlyGroup
-                  title="Payroll (SurePayroll)"
-                  rows={[
-                    ["Setup Completion", field("surePayrollSetupCompletion")],
-                    ["Deposit Schedule", field("surePayrollDepositSchedule")],
-                    ["Filing Frequency", field("payrollFilingFrequency")],
-                    ["Processing Date", field("payrollProcessingDate")],
-                  ]}
-                  last
-                />
+            <div className="ccard">
+              <header>
+                <h3>Filing status</h3>
+                <span className="hint">view only</span>
+              </header>
+              <div className="facts">
+                {facts.map(([k, v]) => (
+                  <div key={k} className="fact">
+                    <div className="k">{k}</div>
+                    <div className={`v ${v ? "" : "miss"}`}>{v || "Not set"}</div>
+                  </div>
+                ))}
               </div>
-            </Card>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <Card className="p-5 flex items-center gap-4">
-              <span
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-                  allDone ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
-                }`}
-              >
-                <CheckCircleIcon className="h-7 w-7" />
-              </span>
-              <div>
-                <p className="font-medium text-slate-900">{allDone ? "All set" : "In progress"}</p>
-                <p className="text-sm text-slate-500">
+          <div className="rail">
+            <div className="ccard">
+              <header>
+                <h3>Status</h3>
+              </header>
+              <div style={{ padding: "14px 15px" }}>
+                <p style={{ fontWeight: 600, color: "var(--ink)" }}>{allDone ? "All set" : "In progress"}</p>
+                <p style={{ fontSize: 12.5, color: "var(--ink-3)", marginTop: 2 }}>
                   {completed} of {total} items complete
                 </p>
-                <span
-                  className={`inline-flex items-center gap-1.5 mt-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-                    allDone ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${allDone ? "bg-emerald-500" : "bg-blue-500"}`} />
+                <span className={`cpill ${allDone ? "g" : "b"}`} style={{ marginTop: 8, display: "inline-flex" }}>
                   {allDone ? "Complete" : "In progress"}
                 </span>
               </div>
-            </Card>
+            </div>
 
-            <Card className="p-5">
-              <h3 className="font-medium text-slate-900 mb-3">Messages</h3>
-              {(!notifications || notifications.length === 0) && (
-                <p className="text-sm text-slate-400">No messages yet.</p>
-              )}
-              <ul>
-                {notifications?.map((n, i) => (
-                  <li key={n.id} className={i > 0 ? "pt-3 mt-3 border-t border-slate-100" : ""}>
-                    <p className="text-sm font-medium text-slate-800">{n.title}</p>
-                    <p className="text-sm text-slate-500 mt-0.5">{n.body}</p>
-                    <p className="text-xs text-slate-400 mt-1.5">
-                      {new Date(n.created_at).toLocaleString()}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+            <div className="ccard">
+              <header>
+                <h3>Messages</h3>
+              </header>
+              {(!notifications || notifications.length === 0) && <EmptyState title="No messages yet" />}
+              {notifications?.map((n) => (
+                <div key={n.id} className="rl">
+                  <div>
+                    <div className="x" style={{ fontWeight: 600 }}>
+                      {n.title}
+                    </div>
+                    <div className="x" style={{ marginTop: 2 }}>
+                      {n.body}
+                    </div>
+                    <div className="y" style={{ marginTop: 4 }}>
+                      {new Date(n.created_at).toLocaleString("en-US")}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </main>
-    </div>
-  );
-}
-
-function SectionCount({ done, total }: { done: number; total: number }) {
-  const complete = done === total;
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        complete ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
-      }`}
-    >
-      {done}/{total}
-    </span>
-  );
-}
-
-function ReadOnlyGroup({
-  title,
-  rows,
-  last = false,
-}: {
-  title: string;
-  rows: [string, string | undefined][];
-  last?: boolean;
-}) {
-  return (
-    <div className={last ? "" : "pb-6 border-b border-slate-100"}>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{title}</h3>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-        {rows.map(([label, value]) => (
-          <div key={label} className="contents">
-            <dt className="text-slate-500">{label}</dt>
-            <dd className={value ? "text-slate-900 font-medium" : "text-slate-300"}>{value || "Not set"}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+      </div>
+    </>
   );
 }

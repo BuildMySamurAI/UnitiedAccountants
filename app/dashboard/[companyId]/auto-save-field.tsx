@@ -2,23 +2,9 @@
 
 import { useState } from "react";
 import { updateCompanyField, type EditableFieldKey } from "./actions";
-import { StatusPill } from "@/components/ui/status-pill";
 
-function CheckIcon({ done }: { done: boolean }) {
-  return (
-    <span
-      className={`mt-7 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors ${
-        done ? "bg-emerald-600 text-white" : "bg-slate-200"
-      }`}
-    >
-      {done && (
-        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-        </svg>
-      )}
-    </span>
-  );
-}
+const STATUS_LABEL = { idle: "Unsaved", saving: "Saving...", saved: "Saved", error: "Error" } as const;
+const STATUS_VARIANT = { idle: "n", saving: "n", saved: "g", error: "r" } as const;
 
 export function AutoSaveField({
   companyId,
@@ -52,27 +38,33 @@ export function AutoSaveField({
     }
   }
 
-  const done = status === "saved" && value.trim().length > 0;
-
   return (
-    <div className="flex items-start gap-3 py-4">
-      <CheckIcon done={done} />
-      <div className="flex-1 min-w-0">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
-        <div className="flex items-center gap-2">
-          <input
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              if (status !== "saving") setStatus("idle");
-            }}
-            onBlur={handleBlur}
-            className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-700/10 focus:border-emerald-600"
-          />
-          <StatusPill status={status} />
-        </div>
-        {error && <p className="text-xs text-red-600 mt-1.5">{error}</p>}
+    <div style={{ padding: "12px 15px", borderBottom: "1px solid var(--rule-soft)" }}>
+      <label className="fact" style={{ display: "block", padding: 0, border: "none" }}>
+        <span className="k">{label}</span>
+      </label>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+        <input
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (status !== "saving") setStatus("idle");
+          }}
+          onBlur={handleBlur}
+          style={{
+            flex: 1,
+            padding: "8px 11px",
+            border: "1px solid var(--rule)",
+            borderRadius: 7,
+            font: "inherit",
+            fontSize: 13,
+            background: "#fff",
+            color: "var(--ink)",
+          }}
+        />
+        <span className={`cpill ${STATUS_VARIANT[status]}`}>{STATUS_LABEL[status]}</span>
       </div>
+      {error && <p style={{ fontSize: 11.5, color: "var(--red)", marginTop: 6 }}>{error}</p>}
     </div>
   );
 }

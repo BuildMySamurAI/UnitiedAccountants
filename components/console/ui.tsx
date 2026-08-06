@@ -78,11 +78,15 @@ export function EmptyState({ title, subtitle }: { title: string; subtitle?: stri
 
 export function ConsoleTopBar({
   crumbs,
+  searchAction,
   searchDefault,
+  searchPlaceholder = "Search contacts, entities, EINs...",
   actions,
 }: {
   crumbs: { label: string; href?: string }[];
+  searchAction?: string;
   searchDefault?: string;
+  searchPlaceholder?: string;
   actions?: React.ReactNode;
 }) {
   return (
@@ -95,13 +99,15 @@ export function ConsoleTopBar({
           </span>
         ))}
       </div>
-      <form action="/owner/contacts" method="get" className="search">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input name="q" defaultValue={searchDefault} placeholder="Search contacts, entities, EINs..." />
-      </form>
+      {searchAction && (
+        <form action={searchAction} method="get" className="search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input name="q" defaultValue={searchDefault} placeholder={searchPlaceholder} />
+        </form>
+      )}
       {actions}
     </div>
   );

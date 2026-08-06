@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "../_components/ui";
+import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/components/console/ui";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -37,6 +37,7 @@ export default async function ContactsPage({
     <>
       <ConsoleTopBar
         crumbs={[{ label: "Contacts" }]}
+        searchAction="/owner/contacts"
         searchDefault={q}
         actions={
           <Link href="/owner/team" className="cbtn ghost">

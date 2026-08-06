@@ -38,9 +38,7 @@ export default function DocumentUploader({
     const storagePath = `${companyId}/${fieldKey}/${Date.now()}-${file.name}`;
     const supabase = supabaseBrowser();
 
-    const { error: uploadError } = await supabase.storage
-      .from("company-files")
-      .upload(storagePath, file);
+    const { error: uploadError } = await supabase.storage.from("company-files").upload(storagePath, file);
 
     if (uploadError) {
       setError(uploadError.message);
@@ -68,58 +66,33 @@ export default function DocumentUploader({
   const hasFiles = existing.length > 0;
 
   return (
-    <div className="flex items-start gap-3 py-4">
-      <span
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors ${
-          hasFiles ? "bg-emerald-600 text-white" : "bg-slate-200"
-        }`}
-      >
-        {hasFiles && (
-          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-        )}
-      </span>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-800">{label}</span>
-          <label
-            className={`inline-flex items-center gap-1.5 text-sm font-medium cursor-pointer shrink-0 ml-3 transition-colors ${
-              uploading ? "text-slate-400" : "text-emerald-700 hover:text-emerald-800"
-            }`}
-          >
-            {uploading && (
-              <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
-              </svg>
-            )}
-            {uploading ? "Uploading..." : hasFiles ? "+ Add another" : "Upload"}
-            <input type="file" onChange={handleFileChange} disabled={uploading} className="hidden" />
-          </label>
-        </div>
-
-        {hasFiles && (
-          <ul className="mt-2 space-y-1.5">
+    <div className={`doc ${hasFiles ? "have" : "miss"}`}>
+      <div className="ic">{hasFiles ? "PDF" : "-"}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="nm">{label}</div>
+        {hasFiles ? (
+          <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 4 }}>
             {existing.map((f) => (
-              <li
-                key={f.id}
-                className="flex items-center justify-between gap-3 text-sm bg-slate-50 rounded-lg px-3 py-1.5"
-              >
-                <span className="text-slate-600 truncate">{f.file_name}</span>
-                <button
-                  onClick={() => handleView(f.storage_path)}
-                  className="text-emerald-700 hover:text-emerald-800 hover:underline shrink-0 font-medium"
-                >
+              <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span className="mt" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {f.file_name}
+                </span>
+                <button onClick={() => handleView(f.storage_path)} className="cbtn ghost" style={{ flexShrink: 0, padding: "3px 9px", fontSize: 11 }}>
                   View
                 </button>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
+        ) : (
+          <div className="mt">Not yet uploaded</div>
         )}
-
-        {error && <p className="text-sm text-red-600 mt-1.5">{error}</p>}
+        {error && <p style={{ fontSize: 11.5, color: "var(--red)", marginTop: 4 }}>{error}</p>}
+      </div>
+      <div className="rt">
+        <label className="cbtn" style={{ cursor: "pointer" }}>
+          {uploading ? "Uploading..." : hasFiles ? "+ Add another" : "Upload"}
+          <input type="file" onChange={handleFileChange} disabled={uploading} style={{ display: "none" }} />
+        </label>
       </div>
     </div>
   );

@@ -1,18 +1,24 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue, customFieldFileUrl, customFieldFileUrls } from "@/lib/ghl/fields";
-import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
+import { OPPORTUNITY_FIELDS, PIPELINE_STAGES } from "@/lib/ghl/constants";
 import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
-import { Header } from "@/components/header";
-import { Card } from "@/components/ui/card";
-import { CompanyTabs } from "@/components/company-tabs";
-import { ClientSwitcher } from "@/components/client-switcher";
 import { StaffField } from "./staff-field";
 import { StaffDocument } from "./staff-document";
 import { StaffDocumentMulti } from "./staff-document-multi";
+import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
+import { EntitySwitch } from "@/components/console/entity-switch";
+
+const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
+  "Client Onboarding": "b",
+  "Sunbiz Filed": "b",
+  "EIN Applied": "b",
+  "Tax Registrations In Progress": "a",
+  "QC Review": "a",
+  "Active Client": "g",
+};
 
 export default async function StaffCompanyPage({
   params,
@@ -21,15 +27,15 @@ export default async function StaffCompanyPage({
 }) {
   const { profileId, companyId } = await params;
   const supabase = await supabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id, ghl_opportunity_id, assigned_team_member_id, team_members(full_name)")
-    .eq("id", companyId)
-    .single();
+  const [{ data: profile }, { data: company }] = await Promise.all([
+    supabase.from("profiles").select("first_name, last_name").eq("id", profileId).single(),
+    supabase
+      .from("companies")
+      .select("id, ghl_opportunity_id, team_members(full_name)")
+      .eq("id", companyId)
+      .single(),
+  ]);
 
   if (!company) notFound();
 
@@ -38,9 +44,9 @@ export default async function StaffCompanyPage({
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
   const assignedName = (company.team_members as unknown as { full_name: string } | null)?.full_name;
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
-
-  // Same gating as the client portal - only shown while the month is open.
   const bookkeepingCycleOpen = customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked) !== "Yes";
+  const stageIndex = PIPELINE_STAGES.findIndex((s) => s.id === opportunity.pipelineStageId);
+  const stageName = stageIndex >= 0 ? PIPELINE_STAGES[stageIndex].name : "Unknown";
 
   const { data: files } = await supabase
     .from("files")
@@ -48,75 +54,80 @@ export default async function StaffCompanyPage({
     .eq("company_id", companyId)
     .order("uploaded_at", { ascending: false });
 
-  // RLS already restricts these to companies/clients assigned to this team
-  // member, so no extra filtering is needed here.
+  // RLS already restricts this to companies assigned to this team member.
   const { data: siblingCompanies } = await supabase
     .from("companies")
-    .select("id, business_name")
+    .select("id, business_name, pipeline_stage")
     .eq("profile_id", profileId)
     .order("created_at", { ascending: true });
 
-  const { data: assignedCompanies } = await supabase
-    .from("companies")
-    .select("profile_id, profiles(id, first_name, last_name)")
-    .order("created_at", { ascending: true });
-
-  const clientOptions = Array.from(
-    new Map(
-      (assignedCompanies ?? []).map((c) => {
-        const p = c.profiles as unknown as { id: string; first_name: string; last_name: string } | null;
-        return [c.profile_id, { id: c.profile_id, label: p ? `${p.first_name} ${p.last_name}` : c.profile_id }];
-      })
-    ).values()
-  );
+  const clientName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "Client";
 
   return (
-    <div className="min-h-screen">
-      <Header userLabel={user?.email ?? undefined} subtitle="Team Portal" />
+    <>
+      <ConsoleTopBar
+        searchAction="/staff"
+        crumbs={[
+          { label: "My Clients", href: "/staff" },
+          { label: clientName, href: `/staff/${profileId}` },
+          { label: businessName },
+        ]}
+      />
+      <div className="wrap">
+        <h2 className="page">{businessName}</h2>
+        <p className="sub">Owned by {clientName}</p>
 
-      <main className="mx-auto max-w-3xl px-6 py-10">
-        <div className="flex items-center justify-between">
-          <Link href={`/staff/${profileId}`} className="text-sm text-slate-500 hover:text-slate-700">
-            &larr; Back to client
-          </Link>
-          {clientOptions.length > 1 && (
-            <ClientSwitcher clients={clientOptions} activeId={profileId} basePath="/staff" />
-          )}
-        </div>
-        <h1 className="text-2xl font-semibold text-slate-900 mt-2 mb-4">{businessName}</h1>
-
-        <CompanyTabs
+        <EntitySwitch
+          ownerName={clientName}
           companies={siblingCompanies ?? []}
           activeId={companyId}
           hrefFor={(id) => `/staff/${profileId}/${id}`}
         />
 
-        <Card className="p-6 mb-6">
-          <h2 className="text-base font-semibold text-slate-900 mb-1">Assignment</h2>
-          <p className="text-sm text-slate-500 mt-2">
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Pipeline position</h3>
+            <span className="hint">
+              <Pill variant={STAGE_PILL[stageName] ?? "n"}>{stageName}</Pill>
+            </span>
+          </header>
+          <div style={{ padding: "16px 15px" }}>
+            <StageProgress stages={PIPELINE_STAGES.map((s) => s.name)} currentIndex={Math.max(stageIndex, 0)} />
+          </div>
+        </div>
+
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Assignment</h3>
+          </header>
+          <div style={{ padding: "14px 15px", fontSize: 13 }}>
             {assignedName ? (
               <>
-                Assigned to <span className="font-medium text-slate-900">{assignedName}</span>
+                Assigned to <b>{assignedName}</b>
               </>
             ) : (
               "Not yet assigned"
             )}
-            <span className="text-slate-400"> - set from the Owner Portal</span>
-          </p>
-        </Card>
+            <span style={{ color: "var(--ink-3)" }}> - set from the Owner Portal</span>
+          </div>
+        </div>
 
-        <Card className="p-6 mb-6">
-          <h2 className="text-base font-semibold text-slate-900 mb-1">QC Passed?</h2>
-          <p className="text-sm text-slate-500 mt-2">
-            <span className="font-medium text-slate-900">{qcPassed || "Not set"}</span>
-            <span className="text-slate-400"> - set automatically by a GHL workflow, view only</span>
-          </p>
-        </Card>
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>QC Passed?</h3>
+          </header>
+          <div style={{ padding: "14px 15px", fontSize: 13 }}>
+            <b>{qcPassed || "Not set"}</b>
+            <span style={{ color: "var(--ink-3)" }}> - set automatically by a GHL workflow, view only</span>
+          </div>
+        </div>
 
         {STAFF_FIELD_GROUPS.map((group) => (
-          <Card key={group.title} className="p-6 mb-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-1">{group.title}</h2>
-            <div className="divide-y divide-slate-100 mt-3">
+          <div key={group.title} className="ccard" style={{ marginBottom: 16 }}>
+            <header>
+              <h3>{group.title}</h3>
+            </header>
+            <div style={{ padding: "4px 15px" }}>
               {group.fields.map((f) => {
                 const raw = customFieldValue(cf, OPPORTUNITY_FIELDS[f.key]) ?? "";
                 const value = f.type === "date" && raw ? raw.slice(0, 10) : raw;
@@ -134,13 +145,15 @@ export default async function StaffCompanyPage({
                 );
               })}
             </div>
-          </Card>
+          </div>
         ))}
 
-        <Card className="p-6 mb-6">
-          <h2 className="text-base font-semibold text-slate-900 mb-1">Documents (team-provided)</h2>
-          <p className="text-sm text-slate-500 mb-3">Upload as filings come back from Sunbiz/IRS/DOR</p>
-          <div className="divide-y divide-slate-100">
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Documents (team-provided)</h3>
+            <span className="hint">upload as filings come back</span>
+          </header>
+          <div style={{ padding: "4px 15px" }}>
             {STAFF_FILE_FIELDS.map((f) => (
               <StaffDocument
                 key={f.key}
@@ -151,15 +164,15 @@ export default async function StaffCompanyPage({
               />
             ))}
           </div>
-        </Card>
+        </div>
 
         {bookkeepingCycleOpen && (
-          <Card className="p-6 mb-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-1">Monthly Bookkeeping Documents</h2>
-            <p className="text-sm text-slate-500 mb-3">
-              Available while the month is open - hides once the month is locked
-            </p>
-            <div className="divide-y divide-slate-100">
+          <div className="ccard" style={{ marginBottom: 16 }}>
+            <header>
+              <h3>Monthly Bookkeeping Documents</h3>
+              <span className="hint">cycle open</span>
+            </header>
+            <div style={{ padding: "4px 15px" }}>
               {SHARED_BOOKKEEPING_FILE_FIELDS.map((f) => (
                 <StaffDocumentMulti
                   key={f.key}
@@ -170,49 +183,48 @@ export default async function StaffCompanyPage({
                 />
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+            <div style={{ padding: "12px 15px", borderTop: "1px solid var(--rule-soft)" }}>
+              <h4 style={{ fontFamily: "var(--console-font-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--ink-3)", marginBottom: 8 }}>
                 Client-uploaded (view only)
-              </h3>
-              <ul className="space-y-1.5">
-                {CLIENT_BOOKKEEPING_FILE_FIELDS.flatMap((f) =>
-                  customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).map((entry, i) => (
-                    <li key={`${f.key}-${i}`} className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">
-                        {f.label} - {entry.name}
-                      </span>
-                      <a
-                        href={entry.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-emerald-700 hover:underline shrink-0 ml-3"
-                      >
+              </h4>
+              {CLIENT_BOOKKEEPING_FILE_FIELDS.flatMap((f) =>
+                customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).map((entry, i) => (
+                  <div key={`${f.key}-${i}`} className="doc have">
+                    <div className="ic">PDF</div>
+                    <div>
+                      <div className="nm">{f.label}</div>
+                      <div className="mt">{entry.name}</div>
+                    </div>
+                    <div className="rt">
+                      <a href={entry.url} target="_blank" rel="noopener noreferrer" className="cbtn ghost">
                         View
                       </a>
-                    </li>
-                  ))
-                )}
-                {CLIENT_BOOKKEEPING_FILE_FIELDS.every((f) => customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).length === 0) && (
-                  <p className="text-sm text-slate-400">Nothing uploaded yet.</p>
-                )}
-              </ul>
+                    </div>
+                  </div>
+                ))
+              )}
+              {CLIENT_BOOKKEEPING_FILE_FIELDS.every((f) => customFieldFileUrls(cf, OPPORTUNITY_FIELDS[f.key]).length === 0) && (
+                <p style={{ fontSize: 12, color: "var(--ink-3)" }}>Nothing uploaded yet.</p>
+              )}
             </div>
-          </Card>
+          </div>
         )}
 
-        <Card className="p-6">
-          <h2 className="text-base font-semibold text-slate-900 mb-3">Client-uploaded documents</h2>
-          {files && files.length === 0 && <p className="text-sm text-slate-400">Nothing uploaded yet.</p>}
-          <ul className="space-y-1.5">
-            {files?.map((f) => (
-              <li key={f.id} className="flex items-center justify-between text-sm">
-                <span className="text-slate-700">{f.file_name}</span>
-                <span className="text-slate-400">{f.field_key.replace(/_/g, " ")}</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </main>
-    </div>
+        <div className="ccard">
+          <header>
+            <h3>Client-uploaded documents</h3>
+          </header>
+          {files && files.length === 0 && <p style={{ padding: "14px 15px", fontSize: 12, color: "var(--ink-3)" }}>Nothing uploaded yet.</p>}
+          {files?.map((f) => (
+            <div key={f.id} className="rl">
+              <div className="x">{f.file_name}</div>
+              <span className="y" style={{ marginLeft: "auto" }}>
+                {f.field_key.replace(/_/g, " ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }

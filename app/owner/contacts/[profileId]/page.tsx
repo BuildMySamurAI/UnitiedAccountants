@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { searchConversations, getConversationMessages, type GhlMessage } from "@/lib/ghl/client";
-import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "../../_components/ui";
-import { ContactTabs } from "./contact-tabs";
-import { CommunicationPanel } from "./communication-panel";
+import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/components/console/ui";
+import { ContactTabs } from "@/components/console/contact-tabs";
+import { CommunicationPanel } from "@/components/console/communication-panel";
 import { AssignSelect } from "../../assign-select";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
@@ -82,7 +82,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <ConsoleTopBar crumbs={[{ label: "Contacts", href: "/owner/contacts" }, { label: name }]} />
+      <ConsoleTopBar searchAction="/owner/contacts" crumbs={[{ label: "Contacts", href: "/owner/contacts" }, { label: name }]} />
       <div className="wrap">
         <div className="hero">
           <Avatar name={name} id={profile.id} size="lg" />

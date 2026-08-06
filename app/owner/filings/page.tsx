@@ -3,7 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
-import { ConsoleTopBar, Pill, EmptyState } from "../_components/ui";
+import { ConsoleTopBar, Pill, EmptyState } from "@/components/console/ui";
 
 type CompanyRow = {
   companyId: string;
@@ -75,7 +75,7 @@ export default async function FilingsPage() {
 
   return (
     <>
-      <ConsoleTopBar crumbs={[{ label: "Filing calendar" }]} />
+      <ConsoleTopBar searchAction="/owner/contacts" crumbs={[{ label: "Filing calendar" }]} />
       <div className="wrap">
         <h2 className="page">Filing calendar</h2>
         <p className="sub">

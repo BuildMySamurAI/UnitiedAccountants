@@ -19,7 +19,7 @@ export async function inviteTeamMember(formData: FormData): Promise<ActionResult
 
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName },
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    redirectTo: `${process.env.NEXT_PUBLIC_INTERNAL_SITE_URL}/auth/callback`,
   });
 
   if (inviteError) {

@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { searchConversations, getConversationMessages, type GhlMessage } from "@/lib/ghl/client";
+import { searchConversations, getConversationMessages, getContact, type GhlMessage } from "@/lib/ghl/client";
 import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/components/console/ui";
 import { ContactTabs } from "@/components/console/contact-tabs";
 import { CommunicationPanel } from "@/components/console/communication-panel";
 import { AssignSelect } from "../../assign-select";
+import { TagsCard } from "./tags-card";
+import { DeleteContactButton } from "./delete-contact-button";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -38,15 +40,22 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   ]);
 
   let messages: GhlMessage[] = [];
+  let tags: string[] = [];
   if (profile.ghl_contact_id) {
     try {
       const conversations = await searchConversations({ contactId: profile.ghl_contact_id });
       const perConversation = await Promise.all(conversations.map((c) => getConversationMessages(c.id)));
       messages = perConversation.flat();
     } catch {
-      // GHL Conversations read failed (network/scope) - show an empty thread
+      // Conversation read failed (network/scope) - show an empty thread
       // rather than breaking the whole contact page.
       messages = [];
+    }
+    try {
+      const contact = await getContact(profile.ghl_contact_id);
+      tags = contact.tags ?? [];
+    } catch {
+      tags = [];
     }
   }
 
@@ -107,8 +116,11 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
                 Email
               </a>
             )}
+            <DeleteContactButton profileId={profileId} clientName={name} companyNames={companyList.map((c) => c.business_name ?? "Untitled company")} />
           </div>
         </div>
+
+        {profile.ghl_contact_id && <TagsCard contactId={profile.ghl_contact_id} tags={tags} />}
 
         <ContactTabs
           companiesCount={companyList.length}

@@ -118,7 +118,7 @@ export default async function StaffCompanyPage({
           </header>
           <div style={{ padding: "14px 15px", fontSize: 13 }}>
             <b>{qcPassed || "Not set"}</b>
-            <span style={{ color: "var(--ink-3)" }}> - set automatically by a GHL workflow, view only</span>
+            <span style={{ color: "var(--ink-3)" }}> - set automatically by an automated workflow, view only</span>
           </div>
         </div>
 

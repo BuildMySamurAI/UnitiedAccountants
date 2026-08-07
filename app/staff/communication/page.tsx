@@ -96,7 +96,7 @@ export default async function StaffCommunicationPage() {
               })}
             </tbody>
           </table>
-          {sorted.length === 0 && <EmptyState title="No conversations yet" subtitle="Nothing synced from GHL for your assigned clients." />}
+          {sorted.length === 0 && <EmptyState title="No conversations yet" subtitle="Nothing yet for your assigned clients." />}
         </div>
       </div>
     </>

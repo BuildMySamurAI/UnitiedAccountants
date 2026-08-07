@@ -43,7 +43,7 @@ export function CommunicationPanel({ contactId, messages }: { contactId: string;
         <span className="hint">{messages.length} messages</span>
       </header>
       {sorted.length === 0 ? (
-        <EmptyState title="No messages yet" subtitle="Nothing synced from GHL for this contact." />
+        <EmptyState title="No messages yet" subtitle="Nothing here yet for this contact." />
       ) : (
         <div className="thread">
           {sorted.map((m) => {

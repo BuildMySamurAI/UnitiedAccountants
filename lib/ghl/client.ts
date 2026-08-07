@@ -22,7 +22,11 @@ async function ghlFetch(path: string, init?: RequestInit) {
     const body = await res.text();
     throw new Error(`GHL API ${path} failed: ${res.status} ${body}`);
   }
-  return res.json();
+  // DELETE endpoints can return an empty body (204, or 200 with no content) -
+  // res.json() would throw on that, so fall back to {} instead of failing a
+  // successful delete.
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
 }
 
 export type GhlCustomFieldWrite = { id: string; field_value: string };
@@ -257,5 +261,25 @@ export async function sendConversationMessage(input: {
       contactId: input.contactId,
       message: input.message,
     }),
+  });
+}
+
+// Permanently deletes the opportunity. Not previously exercised in this
+// codebase - verify against a disposable test opportunity before trusting it
+// against real client data.
+export async function deleteOpportunity(opportunityId: string) {
+  return ghlFetch(`/opportunities/${opportunityId}`, { method: "DELETE" });
+}
+
+// Permanently deletes the contact. Same caveat as deleteOpportunity.
+export async function deleteContact(contactId: string) {
+  return ghlFetch(`/contacts/${contactId}`, { method: "DELETE" });
+}
+
+// Adds tags to a contact (additive - does not remove existing tags).
+export async function addContactTags(contactId: string, tags: string[]) {
+  return ghlFetch(`/contacts/${contactId}/tags`, {
+    method: "POST",
+    body: JSON.stringify({ tags }),
   });
 }

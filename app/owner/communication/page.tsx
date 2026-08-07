@@ -28,7 +28,7 @@ export default async function CommunicationPage() {
       <ConsoleTopBar searchAction="/owner/contacts" crumbs={[{ label: "Communication" }]} />
       <div className="wrap">
         <h2 className="page">Communication</h2>
-        <p className="sub">Every conversation synced from GoHighLevel across the practice.</p>
+        <p className="sub">Every conversation across the practice.</p>
 
         <div className="ccard">
           <header>
@@ -85,7 +85,7 @@ export default async function CommunicationPage() {
               })}
             </tbody>
           </table>
-          {sorted.length === 0 && <EmptyState title="No conversations yet" subtitle="Nothing synced from GHL." />}
+          {sorted.length === 0 && <EmptyState title="No conversations yet" />}
         </div>
       </div>
     </>

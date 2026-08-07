@@ -125,7 +125,7 @@ export default async function TodayPage() {
               {recentActivity.map((c) => {
                 const profile = c.profiles as unknown as { first_name: string; last_name: string } | null;
                 return (
-                  <div key={c.id} className="rl">
+                  <Link key={c.id} href={`/owner/contacts/${c.profile_id}/${c.id}`} className="rl click" style={{ color: "inherit" }}>
                     <span className="b g" />
                     <div>
                       <div className="x">
@@ -133,7 +133,7 @@ export default async function TodayPage() {
                       </div>
                       <div className="y">{new Date(c.updated_at).toLocaleString()}</div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -146,13 +146,13 @@ export default async function TodayPage() {
               </header>
               {payrollSoon.length === 0 && <EmptyState title="Nothing scheduled" />}
               {payrollSoon.map((d) => (
-                <div key={d.company.id} className="rl">
+                <Link key={d.company.id} href={`/owner/contacts/${d.company.profile_id}/${d.company.id}`} className="rl click" style={{ color: "inherit" }}>
                   <span className="b b" />
                   <div>
                     <div className="x">{d.company.business_name}</div>
                     <div className="y">{new Date(d.payrollProcessingDate!).toLocaleDateString()}</div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
             <div className="ccard">

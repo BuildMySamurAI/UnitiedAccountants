@@ -11,6 +11,7 @@ import { StaffDocumentMulti } from "@/app/staff/[profileId]/[companyId]/staff-do
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 import { AssignSelect } from "../../../assign-select";
+import { DeleteCompanyButton } from "./delete-company-button";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -111,7 +112,7 @@ export default async function CompanyDetailPage({
           </header>
           <div style={{ padding: "14px 15px", fontSize: 13 }}>
             <b>{qcPassed || "Not set"}</b>
-            <span style={{ color: "var(--ink-3)" }}> - set automatically by a GHL workflow, view only</span>
+            <span style={{ color: "var(--ink-3)" }}> - set automatically by an automated workflow, view only</span>
           </div>
         </div>
 
@@ -203,7 +204,7 @@ export default async function CompanyDetailPage({
           </div>
         )}
 
-        <div className="ccard">
+        <div className="ccard" style={{ marginBottom: 16 }}>
           <header>
             <h3>Client-uploaded documents</h3>
           </header>
@@ -217,6 +218,8 @@ export default async function CompanyDetailPage({
             </div>
           ))}
         </div>
+
+        <DeleteCompanyButton companyId={companyId} companyName={businessName} profileId={profileId} />
       </div>
     </>
   );

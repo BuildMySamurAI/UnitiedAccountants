@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { ConsoleTopBar, Avatar, EmptyState } from "@/components/console/ui";
 import { InviteTeamMemberForm } from "../invite-form";
@@ -32,7 +33,12 @@ export default async function TeamPage() {
             <span className="hint">{teamMembers?.length ?? 0} total</span>
           </header>
           {teamMembers?.map((t) => (
-            <div key={t.id} className="person" style={{ padding: "11px 15px", borderBottom: "1px solid var(--rule-soft)" }}>
+            <Link
+              key={t.id}
+              href={`/owner/team/${t.id}`}
+              className="person click"
+              style={{ padding: "11px 15px", borderBottom: "1px solid var(--rule-soft)", color: "inherit", cursor: "pointer" }}
+            >
               <Avatar name={t.full_name} id={t.id} />
               <div>
                 <div className="name">{t.full_name}</div>
@@ -40,7 +46,7 @@ export default async function TeamPage() {
                   {t.email} · {t.companies?.length ?? 0} compan{t.companies?.length === 1 ? "y" : "ies"} assigned
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
           {teamMembers && teamMembers.length === 0 && <EmptyState title="No team members invited yet" />}
         </div>

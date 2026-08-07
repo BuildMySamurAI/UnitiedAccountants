@@ -51,7 +51,7 @@ export default async function PipelinePage() {
       <div className="wrap">
         <h2 className="page">Pipeline</h2>
         <p className="sub">
-          Live from GoHighLevel - {opportunities.length} companies across {PIPELINE_STAGES.length} stages. A client
+          Live - {opportunities.length} companies across {PIPELINE_STAGES.length} stages. A client
           with multiple companies shows one card per company.
         </p>
 

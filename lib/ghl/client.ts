@@ -7,6 +7,17 @@ import {
 const GHL_BASE_URL = "https://services.leadconnectorhq.com";
 const GHL_VERSION = "2021-07-28";
 
+// Carries the HTTP status alongside the error so callers can distinguish
+// "not found" (often fine to treat as already-done, e.g. for deletes) from a
+// real failure, without parsing the message string.
+export class GhlApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function ghlFetch(path: string, init?: RequestInit) {
   const res = await fetch(`${GHL_BASE_URL}${path}`, {
     ...init,
@@ -20,7 +31,7 @@ async function ghlFetch(path: string, init?: RequestInit) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`GHL API ${path} failed: ${res.status} ${body}`);
+    throw new GhlApiError(`GHL API ${path} failed: ${res.status} ${body}`, res.status);
   }
   // DELETE endpoints can return an empty body (204, or 200 with no content) -
   // res.json() would throw on that, so fall back to {} instead of failing a
@@ -264,16 +275,32 @@ export async function sendConversationMessage(input: {
   });
 }
 
-// Permanently deletes the opportunity. Not previously exercised in this
-// codebase - verify against a disposable test opportunity before trusting it
-// against real client data.
+// Permanently deletes the opportunity. Idempotent: if it's already gone
+// (404), that's the desired end state, not a failure - matters because a
+// portal record can outlive the CRM record it points to (e.g. if the CRM
+// side was already removed some other way).
 export async function deleteOpportunity(opportunityId: string) {
-  return ghlFetch(`/opportunities/${opportunityId}`, { method: "DELETE" });
+  try {
+    return await ghlFetch(`/opportunities/${opportunityId}`, { method: "DELETE" });
+  } catch (err) {
+    if (err instanceof GhlApiError && err.status === 404) return { alreadyDeleted: true };
+    throw err;
+  }
 }
 
-// Permanently deletes the contact. Same caveat as deleteOpportunity.
+// Permanently deletes the contact. Idempotent like deleteOpportunity, but
+// GHL's contact endpoint is inconsistent about it - a missing contact comes
+// back as 400 "Contact not found for id:..." rather than 404, so both are
+// treated as already-deleted.
 export async function deleteContact(contactId: string) {
-  return ghlFetch(`/contacts/${contactId}`, { method: "DELETE" });
+  try {
+    return await ghlFetch(`/contacts/${contactId}`, { method: "DELETE" });
+  } catch (err) {
+    if (err instanceof GhlApiError && (err.status === 404 || (err.status === 400 && /not found/i.test(err.message)))) {
+      return { alreadyDeleted: true };
+    }
+    throw err;
+  }
 }
 
 // Adds tags to a contact (additive - does not remove existing tags).

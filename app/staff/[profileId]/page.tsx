@@ -5,6 +5,8 @@ import { searchConversations, getConversationMessages, type GhlMessage } from "@
 import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/components/console/ui";
 import { ContactTabs } from "@/components/console/contact-tabs";
 import { CommunicationPanel } from "@/components/console/communication-panel";
+import { ClientTasksPanel } from "@/components/console/client-tasks-panel";
+import type { TaskRecord, TaskDocRecord } from "@/components/console/task-row";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -31,7 +33,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
   // so this is exactly (and only) what they're allowed to see for this client.
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, business_name, pipeline_stage")
+    .select("id, business_name, pipeline_stage, assigned_team_member_id")
     .eq("profile_id", profileId)
     .order("created_at", { ascending: true });
 
@@ -39,6 +41,8 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
   // this team member entirely - including their conversation history, which
   // is fetched below and isn't itself company-scoped in GHL.
   if (!companies || companies.length === 0) notFound();
+
+  const { data: teamMembers } = await supabase.from("team_members").select("id, full_name").order("full_name", { ascending: true });
 
   let messages: GhlMessage[] = [];
   if (profile.ghl_contact_id) {
@@ -53,6 +57,30 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
 
   const name = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || profile.email || "Unnamed";
   const companyList = companies ?? [];
+
+  const teamMemberById = new Map((teamMembers ?? []).map((m) => [m.id, m]));
+  const taskCompanies = companyList.map((c) => ({
+    id: c.id,
+    businessName: c.business_name ?? "Untitled company",
+    assignedTeamMember: c.assigned_team_member_id ? teamMemberById.get(c.assigned_team_member_id) ?? null : null,
+  }));
+
+  const companyIds = companyList.map((c) => c.id);
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
+    .or(`profile_id.eq.${profileId}${companyIds.length > 0 ? `,company_id.in.(${companyIds.join(",")})` : ""}`)
+    .order("created_at", { ascending: true });
+
+  const taskIds = (tasks ?? []).map((t) => t.id);
+  const { data: taskDocuments } =
+    taskIds.length > 0
+      ? await supabase.from("task_documents").select("id, task_id, file_name, storage_path").in("task_id", taskIds)
+      : { data: [] };
+  const documentsByTask: Record<string, TaskDocRecord[]> = {};
+  for (const d of taskDocuments ?? []) {
+    (documentsByTask[d.task_id] ??= []).push(d);
+  }
 
   const companiesPanel = (
     <div className="ccard">
@@ -107,8 +135,17 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
         <ContactTabs
           companiesCount={companyList.length}
           messagesCount={messages.length}
+          tasksCount={tasks?.length ?? 0}
           companiesPanel={companiesPanel}
           communicationPanel={<CommunicationPanel contactId={profile.ghl_contact_id ?? ""} messages={messages} />}
+          tasksPanel={
+            <ClientTasksPanel
+              profileId={profileId}
+              companies={taskCompanies}
+              tasks={(tasks ?? []) as TaskRecord[]}
+              documentsByTask={documentsByTask}
+            />
+          }
         />
       </div>
     </>

@@ -4,6 +4,8 @@ import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { incomeTaxDeadline } from "@/lib/tax-deadline";
+import { SERVICE_TYPE_LABEL, type ServiceTypeKey } from "@/lib/services";
+import { parseDateOnly } from "@/lib/service-deadlines";
 import { ConsoleTopBar, Pill, EmptyState } from "@/components/console/ui";
 
 type CompanyRow = {
@@ -81,6 +83,28 @@ export default async function FilingsPage() {
   const incomeTaxRows = rows
     .map((r) => ({ ...r, deadline: incomeTaxDeadline(r.entityType, r.extensionFiled) }))
     .filter((r): r is CompanyRow & { deadline: Date } => r.deadline !== null)
+    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+
+  const companyById = new Map((companies ?? []).map((c) => [c.id, c]));
+  const { data: services } = await supabase
+    .from("company_services")
+    .select("company_id, service_type, subtype, deadline_date")
+    .eq("status", "Active")
+    .not("deadline_date", "is", null);
+
+  const serviceRows = (services ?? [])
+    .map((s) => {
+      const company = companyById.get(s.company_id);
+      if (!company) return null;
+      return {
+        companyId: s.company_id,
+        profileId: company.profile_id,
+        companyName: company.business_name ?? "",
+        label: s.subtype ? `${SERVICE_TYPE_LABEL[s.service_type as ServiceTypeKey]} - ${s.subtype}` : SERVICE_TYPE_LABEL[s.service_type as ServiceTypeKey],
+        deadline: parseDateOnly(s.deadline_date as string),
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
 
   return (
@@ -162,6 +186,42 @@ export default async function FilingsPage() {
                 <tr>
                   <td colSpan={4}>
                     <EmptyState title="No entity types set yet" />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Upcoming license &amp; permit deadlines</h3>
+            <span className="hint">{serviceRows.length} items · DBPR, Corp Renewal, Food Permit, Sales Tax Cert</span>
+          </header>
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Deadline</th>
+                <th>Service</th>
+              </tr>
+            </thead>
+            <tbody>
+              {serviceRows.map((r) => (
+                <tr key={`${r.companyId}-${r.label}`} className="click">
+                  <td>
+                    <Link href={`/owner/contacts/${r.profileId}/${r.companyId}`} style={{ color: "inherit" }}>
+                      <b>{r.companyName}</b>
+                    </Link>
+                  </td>
+                  <td className="mono">{r.deadline.toLocaleDateString()}</td>
+                  <td>{r.label}</td>
+                </tr>
+              ))}
+              {serviceRows.length === 0 && (
+                <tr>
+                  <td colSpan={3}>
+                    <EmptyState title="No service deadlines set yet" />
                   </td>
                 </tr>
               )}

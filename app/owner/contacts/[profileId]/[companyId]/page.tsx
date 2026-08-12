@@ -11,6 +11,8 @@ import { StaffDocumentMulti } from "@/app/staff/[profileId]/[companyId]/staff-do
 import { ServicesPanel } from "@/app/staff/[profileId]/[companyId]/services-panel";
 import type { ServiceDocRecord } from "@/app/staff/[profileId]/[companyId]/service-row";
 import { ManagersPanel, type ManagerRecord } from "@/app/staff/[profileId]/[companyId]/managers-panel";
+import { CompanyTasksPanel } from "@/components/console/company-tasks-panel";
+import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 import { AssignSelect } from "../../../assign-select";
@@ -88,6 +90,24 @@ export default async function CompanyDetailPage({
       status: (mgr?.status ?? "invited") as ManagerRecord["status"],
     };
   });
+
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: true });
+
+  const taskIds = (tasks ?? []).map((t) => t.id);
+  const { data: taskDocuments } =
+    taskIds.length > 0
+      ? await supabase.from("task_documents").select("id, task_id, file_name, storage_path").in("task_id", taskIds)
+      : { data: [] };
+  const documentsByTask: Record<string, TaskDocRecord[]> = {};
+  for (const d of taskDocuments ?? []) {
+    (documentsByTask[d.task_id] ??= []).push(d);
+  }
+
+  const assignedTeamMemberForCompany = (teamMembers ?? []).find((m) => m.id === company.assigned_team_member_id) ?? null;
 
   const { data: siblingCompanies } = await supabase
     .from("companies")
@@ -196,6 +216,8 @@ export default async function CompanyDetailPage({
         <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
 
         <ManagersPanel companyId={companyId} managers={managers} />
+
+        <CompanyTasksPanel companyId={companyId} tasks={tasks ?? []} documentsByTask={documentsByTask} assignedTeamMember={assignedTeamMemberForCompany} />
 
         {bookkeepingCycleOpen && (
           <div className="ccard" style={{ marginBottom: 16 }}>

@@ -1,6 +1,7 @@
 import { ServiceDocumentUploader } from "@/app/staff/[profileId]/[companyId]/service-document-uploader";
 import type { ServiceDocRecord, ServiceRecord } from "@/app/staff/[profileId]/[companyId]/service-row";
 import { SERVICE_TYPE_LABEL } from "@/lib/services";
+import { parseDateOnly } from "@/lib/service-deadlines";
 import { EmptyState } from "@/components/console/ui";
 
 // Client view is read-only on the service details (type, license #,
@@ -32,7 +33,7 @@ export function ClientServices({
                 <b style={{ fontSize: 13 }}>{title}</b>
                 <span style={{ fontSize: 12, color: "var(--ink-3)" }}>
                   {s.license_number ? `#${s.license_number} - ` : ""}
-                  {s.deadline_date ? `due ${new Date(s.deadline_date).toLocaleDateString()}` : "no deadline set"}
+                  {s.deadline_date ? `due ${parseDateOnly(s.deadline_date).toLocaleDateString()}` : "no deadline set"}
                 </span>
               </div>
               <ServiceDocumentUploader companyId={s.company_id} serviceId={s.id} existing={documentsByService[s.id] ?? []} />

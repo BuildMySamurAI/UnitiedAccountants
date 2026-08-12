@@ -105,7 +105,7 @@ export default async function CompanyPage({
     ["Business Partner Number", field("businessPartnerNumber")],
     ["Sales Tax Filing Frequency", field("salesTaxFilingFrequency")],
     ["Sales Tax Submission Date", field("salesTaxSubmissionDate")],
-    ["eFileSalesTax Username", field("efileSalesTaxUsername")],
+    ["E-File Sales Tax Added?", field("efileSalesTaxAdded")],
     ["eFileSalesTax Registration Status", field("efileSalesTaxRegistrationStatus")],
     ["RT Account Number", field("rtAccountNumber")],
     ["RT Filing Frequency", field("rtFilingFrequency")],

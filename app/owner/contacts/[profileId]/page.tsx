@@ -5,6 +5,8 @@ import { searchConversations, getConversationMessages, getContact, type GhlMessa
 import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/components/console/ui";
 import { ContactTabs } from "@/components/console/contact-tabs";
 import { CommunicationPanel } from "@/components/console/communication-panel";
+import { ClientTasksPanel } from "@/components/console/client-tasks-panel";
+import type { TaskRecord, TaskDocRecord } from "@/components/console/task-row";
 import { AssignSelect } from "../../assign-select";
 import { TagsCard } from "./tags-card";
 import { DeleteContactButton } from "./delete-contact-button";
@@ -61,6 +63,30 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
   const name = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || profile.email || "Unnamed";
   const companyList = companies ?? [];
+
+  const teamMemberById = new Map((teamMembers ?? []).map((m) => [m.id, m]));
+  const taskCompanies = companyList.map((c) => ({
+    id: c.id,
+    businessName: c.business_name ?? "Untitled company",
+    assignedTeamMember: c.assigned_team_member_id ? teamMemberById.get(c.assigned_team_member_id) ?? null : null,
+  }));
+
+  const companyIds = companyList.map((c) => c.id);
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
+    .or(`profile_id.eq.${profileId}${companyIds.length > 0 ? `,company_id.in.(${companyIds.join(",")})` : ""}`)
+    .order("created_at", { ascending: true });
+
+  const taskIds = (tasks ?? []).map((t) => t.id);
+  const { data: taskDocuments } =
+    taskIds.length > 0
+      ? await supabase.from("task_documents").select("id, task_id, file_name, storage_path").in("task_id", taskIds)
+      : { data: [] };
+  const documentsByTask: Record<string, TaskDocRecord[]> = {};
+  for (const d of taskDocuments ?? []) {
+    (documentsByTask[d.task_id] ??= []).push(d);
+  }
 
   const companiesPanel = (
     <div className="ccard">
@@ -125,8 +151,17 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         <ContactTabs
           companiesCount={companyList.length}
           messagesCount={messages.length}
+          tasksCount={tasks?.length ?? 0}
           companiesPanel={companiesPanel}
           communicationPanel={<CommunicationPanel contactId={profile.ghl_contact_id ?? ""} messages={messages} />}
+          tasksPanel={
+            <ClientTasksPanel
+              profileId={profileId}
+              companies={taskCompanies}
+              tasks={(tasks ?? []) as TaskRecord[]}
+              documentsByTask={documentsByTask}
+            />
+          }
         />
       </div>
     </>

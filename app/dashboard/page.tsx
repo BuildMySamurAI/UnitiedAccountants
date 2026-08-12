@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { ConsoleTopBar, Pill, EmptyState } from "@/components/console/ui";
+import { ClientTaskForm } from "./client-task-form";
+import { parseDateOnly } from "@/lib/service-deadlines";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -34,8 +36,26 @@ export default async function DashboardPage() {
 
   const { data: companies, error } = await supabase
     .from("companies")
-    .select("id, business_name, pipeline_stage, created_at")
+    .select("id, business_name, pipeline_stage, created_at, assigned_team_member_id")
     .order("created_at", { ascending: true });
+
+  let assignableTeamMembers: { id: string; full_name: string }[] = [];
+  let myTasks: { id: string; description: string | null; status: string; deadline_date: string | null }[] = [];
+
+  if (profile) {
+    const assignedIds = [...new Set((companies ?? []).map((c) => c.assigned_team_member_id).filter((id): id is string => Boolean(id)))];
+    if (assignedIds.length > 0) {
+      const { data: teamMembers } = await supabase.from("team_members").select("id, full_name").in("id", assignedIds);
+      assignableTeamMembers = teamMembers ?? [];
+    }
+
+    const { data: tasks } = await supabase
+      .from("tasks")
+      .select("id, description, status, deadline_date")
+      .eq("profile_id", user!.id)
+      .order("created_at", { ascending: false });
+    myTasks = tasks ?? [];
+  }
 
   return (
     <>
@@ -69,6 +89,30 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+
+        {profile && (
+          <div className="ccard" style={{ marginTop: 16 }}>
+            <header>
+              <h3>Requests</h3>
+              <span className="hint">{myTasks.length} sent</span>
+            </header>
+            {myTasks.length === 0 && <EmptyState title="Nothing sent yet" subtitle="Need something outside the usual? Send a request below." />}
+            {myTasks.map((t) => (
+              <div key={t.id} className="rl">
+                <div>
+                  <div className="x">{t.description}</div>
+                  <div className="y" style={{ marginTop: 4 }}>
+                    {t.deadline_date ? `Needed by ${parseDateOnly(t.deadline_date).toLocaleDateString()}` : "No deadline given"}
+                  </div>
+                </div>
+                <span style={{ marginLeft: "auto" }}>
+                  <Pill variant={t.status === "Complete" ? "g" : t.status === "In Progress" ? "a" : "n"}>{t.status}</Pill>
+                </span>
+              </div>
+            ))}
+            <ClientTaskForm profileId={user!.id} assignableTeamMembers={assignableTeamMembers} />
+          </div>
+        )}
       </div>
     </>
   );

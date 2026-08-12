@@ -11,6 +11,8 @@ import { StaffDocumentMulti } from "./staff-document-multi";
 import { ServicesPanel } from "./services-panel";
 import type { ServiceDocRecord } from "./service-row";
 import { ManagersPanel, type ManagerRecord } from "./managers-panel";
+import { CompanyTasksPanel } from "@/components/console/company-tasks-panel";
+import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 
@@ -35,7 +37,7 @@ export default async function StaffCompanyPage({
     supabase.from("profiles").select("first_name, last_name").eq("id", profileId).single(),
     supabase
       .from("companies")
-      .select("id, ghl_opportunity_id, team_members(full_name)")
+      .select("id, ghl_opportunity_id, team_members(id, full_name)")
       .eq("id", companyId)
       .single(),
   ]);
@@ -45,7 +47,8 @@ export default async function StaffCompanyPage({
   const opportunity = await getOpportunity(company.ghl_opportunity_id);
   const cf = opportunity.customFields;
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
-  const assignedName = (company.team_members as unknown as { full_name: string } | null)?.full_name;
+  const assignedTeamMemberForCompany = company.team_members as unknown as { id: string; full_name: string } | null;
+  const assignedName = assignedTeamMemberForCompany?.full_name;
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
   const bookkeepingCycleOpen = customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked) !== "Yes";
   const stageIndex = PIPELINE_STAGES.findIndex((s) => s.id === opportunity.pipelineStageId);
@@ -87,7 +90,24 @@ export default async function StaffCompanyPage({
     };
   });
 
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: true });
+
+  const taskIds = (tasks ?? []).map((t) => t.id);
+  const { data: taskDocuments } =
+    taskIds.length > 0
+      ? await supabase.from("task_documents").select("id, task_id, file_name, storage_path").in("task_id", taskIds)
+      : { data: [] };
+  const documentsByTask: Record<string, TaskDocRecord[]> = {};
+  for (const d of taskDocuments ?? []) {
+    (documentsByTask[d.task_id] ??= []).push(d);
+  }
+
   // RLS already restricts this to companies assigned to this team member.
+
   const { data: siblingCompanies } = await supabase
     .from("companies")
     .select("id, business_name, pipeline_stage")
@@ -202,6 +222,8 @@ export default async function StaffCompanyPage({
         <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
 
         <ManagersPanel companyId={companyId} managers={managers} />
+
+        <CompanyTasksPanel companyId={companyId} tasks={tasks ?? []} documentsByTask={documentsByTask} assignedTeamMember={assignedTeamMemberForCompany} />
 
         {bookkeepingCycleOpen && (
           <div className="ccard" style={{ marginBottom: 16 }}>

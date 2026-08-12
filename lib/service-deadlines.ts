@@ -32,3 +32,14 @@ export function suggestedServiceDeadline(serviceType: ServiceTypeKey, now: Date 
 
   return `${year}-${pad(month)}-${pad(day)}`;
 }
+
+// Parses a "YYYY-MM-DD" date-only string (e.g. from a Postgres `date`
+// column) into a local-midnight Date. Plain `new Date("YYYY-MM-DD")`
+// interprets the string as UTC midnight, which displays as the previous day
+// in any timezone behind UTC (including US Eastern, where this business
+// operates) - splitting and using the local-timezone Date constructor
+// avoids that shift entirely.
+export function parseDateOnly(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}

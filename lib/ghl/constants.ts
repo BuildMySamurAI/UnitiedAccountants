@@ -44,8 +44,11 @@ export const OPPORTUNITY_FIELDS = {
   salesTaxSubmissionDate: "vr6v8girO2GHnm2DjOMX",
   salesTaxSubmissionConfirmation: "w4AvyypIJ50lq5tCdOP4", // staff-only (submission evidence)
 
-  efileSalesTaxUsername: "iwKOpsBZGfeY0TW6lsOu",
+  efileSalesTaxUsername: "iwKOpsBZGfeY0TW6lsOu", // deprecated - replaced by efileSalesTaxAdded + the login fields below, kept only for old data
   efileSalesTaxRegistrationStatus: "B1Ryhj4z95LwJPi9HKp0",
+  efileSalesTaxAdded: "Y8mXXuhbcsh7L8v11P0M",
+  efileSalesTaxLoginUsername: "kn5nTu4QzT2G3j9XusXO",
+  efileSalesTaxLoginPassword: "XGigDhKf0EQX6Qo3RUeO", // plain text, per owner decision (matches the Manager SSN precedent)
 
   rtApproved: "Petf6B0LYZ6z2VuMDMyI", // staff-only
   rtAccountNumber: "h3gTWpy0InQqVtaUhwEW",

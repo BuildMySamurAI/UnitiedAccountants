@@ -8,6 +8,8 @@ import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "
 import { StaffField } from "./staff-field";
 import { StaffDocument } from "./staff-document";
 import { StaffDocumentMulti } from "./staff-document-multi";
+import { ServicesPanel } from "./services-panel";
+import type { ServiceDocRecord } from "./service-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 
@@ -53,6 +55,22 @@ export default async function StaffCompanyPage({
     .select("id, field_key, file_name, uploaded_at")
     .eq("company_id", companyId)
     .order("uploaded_at", { ascending: false });
+
+  const [{ data: services }, { data: serviceDocuments }] = await Promise.all([
+    supabase
+      .from("company_services")
+      .select("id, company_id, service_type, subtype, license_number, deadline_date, status")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("company_service_documents")
+      .select("id, service_id, year, file_name, storage_path")
+      .eq("company_id", companyId),
+  ]);
+  const documentsByService: Record<string, ServiceDocRecord[]> = {};
+  for (const d of serviceDocuments ?? []) {
+    (documentsByService[d.service_id] ??= []).push(d);
+  }
 
   // RLS already restricts this to companies assigned to this team member.
   const { data: siblingCompanies } = await supabase
@@ -165,6 +183,8 @@ export default async function StaffCompanyPage({
             ))}
           </div>
         </div>
+
+        <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
 
         {bookkeepingCycleOpen && (
           <div className="ccard" style={{ marginBottom: 16 }}>

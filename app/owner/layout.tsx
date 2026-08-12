@@ -18,6 +18,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/owner/documents", label: "Documents", icon: "docs" },
       { href: "/owner/filings", label: "Filing calendar", icon: "filings" },
+      { href: "/owner/bulk-services", label: "Bulk deadlines", icon: "companies" },
     ],
   },
   {

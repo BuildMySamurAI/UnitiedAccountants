@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
+import { incomeTaxDeadline } from "@/lib/tax-deadline";
 import { ConsoleTopBar, Pill, EmptyState } from "@/components/console/ui";
 
 type CompanyRow = {
@@ -16,6 +17,8 @@ type CompanyRow = {
   payrollFrequency?: string;
   payrollProcessingDate?: string;
   payrollSetupComplete?: boolean;
+  entityType?: string;
+  extensionFiled?: string;
 };
 
 export default async function FilingsPage() {
@@ -47,6 +50,8 @@ export default async function FilingsPage() {
         payrollFrequency: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollFilingFrequency),
         payrollProcessingDate: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollProcessingDate),
         payrollSetupComplete: customFieldValue(cf, OPPORTUNITY_FIELDS.surePayrollSetupCompletion) === "Complete",
+        entityType: customFieldValue(cf, OPPORTUNITY_FIELDS.entityType),
+        extensionFiled: customFieldValue(cf, OPPORTUNITY_FIELDS.extensionFiled),
       });
     })
   );
@@ -72,6 +77,11 @@ export default async function FilingsPage() {
   const payrollRows = rows
     .filter((r) => r.payrollProcessingDate)
     .sort((a, b) => new Date(a.payrollProcessingDate!).getTime() - new Date(b.payrollProcessingDate!).getTime());
+
+  const incomeTaxRows = rows
+    .map((r) => ({ ...r, deadline: incomeTaxDeadline(r.entityType, r.extensionFiled) }))
+    .filter((r): r is CompanyRow & { deadline: Date } => r.deadline !== null)
+    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
 
   return (
     <>
@@ -114,6 +124,44 @@ export default async function FilingsPage() {
                 <tr>
                   <td colSpan={4}>
                     <EmptyState title="No payroll processing dates set" />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Upcoming income tax deadlines</h3>
+            <span className="hint">{incomeTaxRows.length} companies · from Entity Type + extension status</span>
+          </header>
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Deadline</th>
+                <th>Entity Type</th>
+                <th>Extension Filed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {incomeTaxRows.map((r) => (
+                <tr key={r.companyId} className="click">
+                  <td>
+                    <Link href={`/owner/contacts/${r.profileId}/${r.companyId}`} style={{ color: "inherit" }}>
+                      <b>{r.companyName}</b>
+                    </Link>
+                  </td>
+                  <td className="mono">{r.deadline.toLocaleDateString()}</td>
+                  <td className="mono">{r.entityType ?? "-"}</td>
+                  <td>{r.extensionFiled === "Yes" ? <Pill variant="a">Yes</Pill> : <Pill variant="n">No</Pill>}</td>
+                </tr>
+              ))}
+              {incomeTaxRows.length === 0 && (
+                <tr>
+                  <td colSpan={4}>
+                    <EmptyState title="No entity types set yet" />
                   </td>
                 </tr>
               )}

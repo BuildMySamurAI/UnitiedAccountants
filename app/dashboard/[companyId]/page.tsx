@@ -8,6 +8,8 @@ import { ConsoleTopBar, EmptyState } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 import { AutoSaveField } from "./auto-save-field";
 import DocumentUploader from "./document-uploader";
+import { ClientServices } from "./client-services";
+import type { ServiceDocRecord } from "@/app/staff/[profileId]/[companyId]/service-row";
 
 export default async function CompanyPage({
   params,
@@ -66,6 +68,22 @@ export default async function CompanyPage({
     .select("id, business_name, pipeline_stage")
     .eq("profile_id", user!.id)
     .order("created_at", { ascending: true });
+
+  const [{ data: services }, { data: serviceDocuments }] = await Promise.all([
+    supabase
+      .from("company_services")
+      .select("id, company_id, service_type, subtype, license_number, deadline_date, status")
+      .eq("company_id", company.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("company_service_documents")
+      .select("id, service_id, year, file_name, storage_path")
+      .eq("company_id", company.id),
+  ]);
+  const documentsByService: Record<string, ServiceDocRecord[]> = {};
+  for (const d of serviceDocuments ?? []) {
+    (documentsByService[d.service_id] ??= []).push(d);
+  }
 
   const checklist = [
     Boolean(businessName?.trim()),
@@ -168,6 +186,8 @@ export default async function CompanyPage({
                 </div>
               )}
             </div>
+
+            <ClientServices services={services ?? []} documentsByService={documentsByService} />
 
             {bookkeepingCycleOpen && (
               <div className="ccard" style={{ marginBottom: 16 }}>

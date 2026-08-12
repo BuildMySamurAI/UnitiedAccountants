@@ -60,6 +60,9 @@ export const OPPORTUNITY_FIELDS = {
 
   qcPassed: "kVk6K53hS2ywO2kb65Ui", // staff-only
 
+  entityType: "OySYfwIBU9554h2DC0S0",
+  extensionFiled: "z7ymOfUbchKEV4fnLaCY", // resets to "No" every Jan 1 - see lib/tax-extension-reset.ts
+
   formationDocuments: "bKfDCsrQ5N0W0RwJf9uh",
   identificationDocuments: "AcPHKSJf6FZKBm6ZtuR1",
 

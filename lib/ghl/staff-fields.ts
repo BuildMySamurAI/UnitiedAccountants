@@ -41,6 +41,25 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
     fields: [{ key: "ein", dbColumn: "ein", label: "EIN", type: "text" }],
   },
   {
+    title: "Income Tax",
+    fields: [
+      {
+        key: "entityType",
+        dbColumn: "entity_type",
+        label: "Entity Type",
+        type: "select",
+        options: ["S-Corp", "C-Corp", "Partnership", "Individual"],
+      },
+      {
+        key: "extensionFiled",
+        dbColumn: "extension_filed",
+        label: "Extension Filed This Year?",
+        type: "select",
+        options: ["No", "Yes"],
+      },
+    ],
+  },
+  {
     title: "Sales Tax",
     fields: [
       { key: "salesTaxApproved", dbColumn: "sales_tax_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },

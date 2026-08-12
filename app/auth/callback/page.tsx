@@ -13,6 +13,18 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Managers have one extra step (personal details) before password setup
+    // - everyone else goes straight to /auth/set-password as before.
+    async function nextStep(supabase: ReturnType<typeof supabaseBrowser>): Promise<string> {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return "/auth/set-password";
+
+      const { data: manager } = await supabase.from("managers").select("id").eq("id", user.id).maybeSingle();
+      return manager ? "/auth/manager-details" : "/auth/set-password";
+    }
+
     async function run() {
       const supabase = supabaseBrowser();
 
@@ -29,7 +41,7 @@ export default function AuthCallbackPage() {
           setError(error.message);
           return;
         }
-        router.replace("/auth/set-password");
+        router.replace(await nextStep(supabase));
         return;
       }
 
@@ -40,7 +52,7 @@ export default function AuthCallbackPage() {
           setError(error.message);
           return;
         }
-        router.replace("/auth/set-password");
+        router.replace(await nextStep(supabase));
         return;
       }
 

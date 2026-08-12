@@ -42,6 +42,13 @@ export default function SetPasswordForm({ email }: { email: string }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    if (user) {
+      // Best-effort - if this fails the account still works, just with a
+      // stale "invite pending" badge on the company's Managers list.
+      await supabase.from("managers").update({ status: "active" }).eq("id", user.id);
+    }
+
     const path = user ? await resolvePostLoginPath(supabase, user.id) : "/dashboard";
 
     router.push(path);

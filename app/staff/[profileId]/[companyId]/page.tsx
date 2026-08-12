@@ -10,6 +10,7 @@ import { StaffDocument } from "./staff-document";
 import { StaffDocumentMulti } from "./staff-document-multi";
 import { ServicesPanel } from "./services-panel";
 import type { ServiceDocRecord } from "./service-row";
+import { ManagersPanel, type ManagerRecord } from "./managers-panel";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 
@@ -71,6 +72,20 @@ export default async function StaffCompanyPage({
   for (const d of serviceDocuments ?? []) {
     (documentsByService[d.service_id] ??= []).push(d);
   }
+
+  const { data: managerAccess } = await supabase
+    .from("manager_company_access")
+    .select("manager_id, managers(email, invited_name, legal_name, status)")
+    .eq("company_id", companyId);
+  const managers: ManagerRecord[] = (managerAccess ?? []).map((m) => {
+    const mgr = m.managers as unknown as { email: string; invited_name: string | null; legal_name: string | null; status: string } | null;
+    return {
+      managerId: m.manager_id,
+      email: mgr?.email ?? "",
+      name: mgr?.legal_name || mgr?.invited_name || "",
+      status: (mgr?.status ?? "invited") as ManagerRecord["status"],
+    };
+  });
 
   // RLS already restricts this to companies assigned to this team member.
   const { data: siblingCompanies } = await supabase
@@ -185,6 +200,8 @@ export default async function StaffCompanyPage({
         </div>
 
         <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
+
+        <ManagersPanel companyId={companyId} managers={managers} />
 
         {bookkeepingCycleOpen && (
           <div className="ccard" style={{ marginBottom: 16 }}>

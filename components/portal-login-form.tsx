@@ -15,7 +15,7 @@ export function PortalLoginForm({
   footerNote,
 }: {
   subtitle: string;
-  roleTable: "profiles" | "team_members" | "owners";
+  roleTable: "profiles" | "team_members" | "owners" | ("profiles" | "managers")[];
   redirectPath: string;
   noAccessMessage: string;
   footerNote?: string;
@@ -44,11 +44,21 @@ export function PortalLoginForm({
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: roleRow } = user
-      ? await supabase.from(roleTable).select("id").eq("id", user.id).maybeSingle()
-      : { data: null };
+    // A manager's login lives in `managers`, not `profiles` - checking
+    // multiple tables lets the Client Portal login accept either identity.
+    const tables = Array.isArray(roleTable) ? roleTable : [roleTable];
+    let hasAccess = false;
+    if (user) {
+      for (const table of tables) {
+        const { data: roleRow } = await supabase.from(table).select("id").eq("id", user.id).maybeSingle();
+        if (roleRow) {
+          hasAccess = true;
+          break;
+        }
+      }
+    }
 
-    if (!roleRow) {
+    if (!hasAccess) {
       await supabase.auth.signOut();
       setError(noAccessMessage);
       setSubmitting(false);

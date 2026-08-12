@@ -22,7 +22,15 @@ export default async function DashboardPage() {
     .from("profiles")
     .select("first_name, last_name")
     .eq("id", user!.id)
-    .single();
+    .maybeSingle();
+
+  // Managers aren't in `profiles` at all - fall back to their own record for
+  // the greeting name.
+  let greetingName = profile?.first_name;
+  if (!greetingName) {
+    const { data: manager } = await supabase.from("managers").select("legal_name, invited_name").eq("id", user!.id).maybeSingle();
+    greetingName = (manager?.legal_name || manager?.invited_name || "").split(" ")[0] || undefined;
+  }
 
   const { data: companies, error } = await supabase
     .from("companies")
@@ -33,7 +41,7 @@ export default async function DashboardPage() {
     <>
       <ConsoleTopBar crumbs={[{ label: "My Companies" }]} />
       <div className="wrap">
-        <h2 className="page">Welcome{profile?.first_name ? `, ${profile.first_name}` : ""}</h2>
+        <h2 className="page">Welcome{greetingName ? `, ${greetingName}` : ""}</h2>
         <p className="sub">Here are all the companies linked to your account.</p>
 
         {error && (

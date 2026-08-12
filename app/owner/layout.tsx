@@ -10,6 +10,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/owner", label: "Today", icon: "today", exact: true },
       { href: "/owner/contacts", label: "Contacts", icon: "contacts" },
       { href: "/owner/communication", label: "Communication", icon: "inbox" },
+      { href: "/owner/bulk-messages", label: "Bulk messages", icon: "inbox" },
       { href: "/owner/pipeline", label: "Pipeline", icon: "pipeline" },
     ],
   },

@@ -260,18 +260,24 @@ export async function getConversationMessages(conversationId: string): Promise<G
 // access to Conversations was verified while planning this feature - this
 // is the first real send-path exercise, so treat failures here as a scope
 // question (token permissions) rather than a bug until confirmed live.
+// GHL's send endpoint takes different fields per channel - `message` for
+// SMS, but `subject` + `html` for Email (a bare `message` on an Email send
+// returns 422 CONVERSATIONS_MSG_NO_CONTENT and silently never sends, even
+// though the call itself doesn't throw). Confirmed live against both types.
 export async function sendConversationMessage(input: {
   contactId: string;
   type: "SMS" | "Email";
   message: string;
+  subject?: string;
 }) {
+  const body =
+    input.type === "Email"
+      ? { type: input.type, contactId: input.contactId, subject: input.subject || "(no subject)", html: input.message.replace(/\n/g, "<br>") }
+      : { type: input.type, contactId: input.contactId, message: input.message };
+
   return ghlFetch("/conversations/messages", {
     method: "POST",
-    body: JSON.stringify({
-      type: input.type,
-      contactId: input.contactId,
-      message: input.message,
-    }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -301,6 +307,56 @@ export async function deleteContact(contactId: string) {
     }
     throw err;
   }
+}
+
+export type GhlContactSummary = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  tags: string[];
+  dnd: boolean;
+};
+
+// Paginates through every contact at the location, same cursor pattern as
+// getAllOpportunitiesInPipeline. The bulk list endpoint already returns tags
+// and dnd per contact, so this avoids an N+1 getContact() call per recipient
+// when building a bulk-message audience.
+export async function getAllContacts(): Promise<GhlContactSummary[]> {
+  const results: GhlContactSummary[] = [];
+  let startAfter: number | undefined;
+  let startAfterId: string | undefined;
+
+  for (;;) {
+    const params = new URLSearchParams({
+      locationId: GHL_LOCATION_ID,
+      limit: "100",
+    });
+    if (startAfter && startAfterId) {
+      params.set("startAfter", String(startAfter));
+      params.set("startAfterId", startAfterId);
+    }
+
+    const data = await ghlFetch(`/contacts/?${params.toString()}`);
+    const contacts = data.contacts ?? [];
+    results.push(
+      ...contacts.map((c: { id: string; contactName?: string; email?: string; phone?: string; tags?: string[]; dnd?: boolean }) => ({
+        id: c.id,
+        name: c.contactName || c.email || c.phone || "Unnamed contact",
+        email: c.email ?? null,
+        phone: c.phone ?? null,
+        tags: c.tags ?? [],
+        dnd: c.dnd ?? false,
+      }))
+    );
+
+    if (!contacts.length || results.length >= (data.meta?.total ?? 0)) break;
+    startAfter = data.meta?.startAfter;
+    startAfterId = data.meta?.startAfterId;
+    if (!startAfter || !startAfterId) break;
+  }
+
+  return results;
 }
 
 // Adds tags to a contact (additive - does not remove existing tags).

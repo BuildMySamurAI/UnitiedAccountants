@@ -17,6 +17,7 @@ export function CommunicationPanel({ contactId, messages }: { contactId: string;
   const router = useRouter();
   const [channel, setChannel] = useState<"SMS" | "Email">("SMS");
   const [text, setText] = useState("");
+  const [subject, setSubject] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,13 +25,14 @@ export function CommunicationPanel({ contactId, messages }: { contactId: string;
     if (!text.trim()) return;
     setSending(true);
     setError(null);
-    const result = await sendContactMessage(contactId, channel, text);
+    const result = await sendContactMessage(contactId, channel, text, channel === "Email" ? subject : undefined);
     setSending(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
     setText("");
+    setSubject("");
     router.refresh();
   }
 
@@ -71,6 +73,15 @@ export function CommunicationPanel({ contactId, messages }: { contactId: string;
             Email
           </button>
         </div>
+        {channel === "Email" && (
+          <input
+            placeholder="Subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            disabled={sending}
+            style={{ marginBottom: 6 }}
+          />
+        )}
         <input
           placeholder="Write a reply..."
           value={text}

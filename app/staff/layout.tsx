@@ -9,6 +9,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/staff", label: "My Clients", icon: "contacts", exact: true },
       { href: "/staff/communication", label: "Communication", icon: "inbox" },
+      { href: "/staff/bulk-messages", label: "Bulk messages", icon: "inbox" },
     ],
   },
 ];

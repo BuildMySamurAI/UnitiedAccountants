@@ -2,6 +2,7 @@ import { getAllOpportunitiesInPipeline, getOpportunity, updateOpportunityCustomF
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS, PIPELINE_NEW_CORP_ONBOARDING } from "@/lib/ghl/constants";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getInactiveCompanyOpportunityIds } from "@/lib/inactive-clients";
 
 // All calendar math is done in UTC, treating these as pure dates with no
 // time-of-day component (matching how GHL DATE fields behave).
@@ -64,12 +65,17 @@ export type PayrollReminderResult = {
 };
 
 export async function runPayrollReminderJob(): Promise<PayrollReminderResult> {
-  const opportunities = await getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING);
+  const [opportunities, inactiveOpportunityIds] = await Promise.all([
+    getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING),
+    getInactiveCompanyOpportunityIds(),
+  ]);
 
   const updated: PayrollReminderResult["updated"] = [];
   const skipped: PayrollReminderResult["skipped"] = [];
 
   for (const summary of opportunities) {
+    if (inactiveOpportunityIds.has(summary.id)) continue;
+
     const opportunity = await getOpportunity(summary.id);
     const processingDate = customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.payrollProcessingDate);
     if (!processingDate) continue;

@@ -116,4 +116,5 @@ export const STAFF_ONLY_OPPORTUNITY_FIELDS = new Set<string>([
 export const CONTACT_FIELDS = {
   portalAccountCreated: "3Aw517NYJwWjca61Ew1l",
   portalUserId: "kyH2FKErus5BGdfOEUea",
+  clientStatus: "0ieb5a1p1EvrVkmvTrVl",
 } as const;

@@ -26,9 +26,12 @@ type CompanyRow = {
 export default async function FilingsPage() {
   const supabase = await supabaseServer();
 
+  // Inactive clients' companies drop off the calendar entirely - there's no
+  // more active work to file, and they'd otherwise clutter every table here.
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, business_name, ghl_opportunity_id, profile_id")
+    .select("id, business_name, ghl_opportunity_id, profile_id, profiles!inner(status)")
+    .eq("profiles.status", "Active")
     .order("created_at", { ascending: true });
 
   const rows: CompanyRow[] = [];

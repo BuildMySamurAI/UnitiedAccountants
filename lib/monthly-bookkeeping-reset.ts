@@ -1,6 +1,7 @@
 import { getAllOpportunitiesInPipeline, updateOpportunityCustomFields } from "@/lib/ghl/client";
 import { OPPORTUNITY_FIELDS, PIPELINE_NEW_CORP_ONBOARDING, STAGE_ACTIVE_CLIENT } from "@/lib/ghl/constants";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getInactiveCompanyOpportunityIds } from "@/lib/inactive-clients";
 
 function currentMonthYYYYMM(): string {
   const now = new Date();
@@ -17,8 +18,11 @@ export type MonthlyResetResult = {
 // fields for every opportunity currently in "Active Client" stage. Only
 // touches these 6 fields; everything else on the opportunity is untouched.
 export async function runMonthlyBookkeepingReset(): Promise<MonthlyResetResult> {
-  const opportunities = await getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING);
-  const activeClients = opportunities.filter((o) => o.pipelineStageId === STAGE_ACTIVE_CLIENT);
+  const [opportunities, inactiveOpportunityIds] = await Promise.all([
+    getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING),
+    getInactiveCompanyOpportunityIds(),
+  ]);
+  const activeClients = opportunities.filter((o) => o.pipelineStageId === STAGE_ACTIVE_CLIENT && !inactiveOpportunityIds.has(o.id));
 
   const currentMonth = currentMonthYYYYMM();
   const reset: MonthlyResetResult["reset"] = [];

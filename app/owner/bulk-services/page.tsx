@@ -7,21 +7,26 @@ export default async function BulkServicesPage() {
 
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, business_name, profiles(first_name, last_name)")
+    .select("id, business_name, profiles(first_name, last_name, status)")
     .order("business_name", { ascending: true });
 
   const { data: services } = await supabase
     .from("company_services")
     .select("company_id, service_type, subtype, status");
 
-  const rows = (companies ?? []).map((c) => {
-    const profile = c.profiles as unknown as { first_name: string; last_name: string } | null;
-    return {
-      id: c.id,
-      businessName: c.business_name ?? "Unnamed company",
-      clientName: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "Unknown client",
-    };
-  });
+  // Inactive clients aren't generating new recurring work, so they don't
+  // show up as bulk-creation targets - still reachable individually from
+  // their own company page if genuinely needed.
+  const rows = (companies ?? [])
+    .filter((c) => (c.profiles as unknown as { status?: string } | null)?.status !== "Inactive")
+    .map((c) => {
+      const profile = c.profiles as unknown as { first_name: string; last_name: string } | null;
+      return {
+        id: c.id,
+        businessName: c.business_name ?? "Unnamed company",
+        clientName: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "Unknown client",
+      };
+    });
 
   return (
     <>

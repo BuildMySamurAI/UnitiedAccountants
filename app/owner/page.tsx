@@ -10,7 +10,7 @@ export default async function TodayPage() {
 
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, business_name, profile_id, ghl_opportunity_id, assigned_team_member_id, created_at, updated_at, profiles(first_name, last_name)")
+    .select("id, business_name, profile_id, ghl_opportunity_id, assigned_team_member_id, created_at, updated_at, profiles(first_name, last_name, status)")
     .order("created_at", { ascending: true });
 
   const list = companies ?? [];
@@ -37,7 +37,9 @@ export default async function TodayPage() {
   const ok = details.filter((d): d is NonNullable<typeof d> => d !== null);
 
   const activeStageId = PIPELINE_STAGES[PIPELINE_STAGES.length - 1].id;
-  const activeClients = new Set(list.map((c) => c.profile_id)).size;
+  const activeClients = new Set(
+    list.filter((c) => (c.profiles as unknown as { status?: string } | null)?.status !== "Inactive").map((c) => c.profile_id)
+  ).size;
   const inProgress = ok.filter((d) => d.stageId !== activeStageId).length;
   const unassigned = list.filter((c) => !c.assigned_team_member_id).length;
   const awaitingStatements = ok.filter((d) => d.monthLocked !== "Yes" && d.statementsReceived !== "Yes").length;

@@ -18,7 +18,10 @@ export type BulkMessageRecipient = {
 // role isn't otherwise allowed to see.
 export async function getBulkMessageRecipients(supabase: SupabaseClient): Promise<BulkMessageRecipient[]> {
   const [{ data: profiles }, { data: companies }, contacts] = await Promise.all([
-    supabase.from("profiles").select("id, ghl_contact_id, first_name, last_name, email"),
+    // Inactive clients are excluded by default - they're still fully
+    // reachable via the Communication panel on their own contact page,
+    // just not part of this "everyone active" audience.
+    supabase.from("profiles").select("id, ghl_contact_id, first_name, last_name, email").eq("status", "Active"),
     supabase.from("companies").select("profile_id, business_name"),
     getAllContacts(),
   ]);

@@ -7,6 +7,7 @@ import { ContactTabs } from "@/components/console/contact-tabs";
 import { CommunicationPanel } from "@/components/console/communication-panel";
 import { ClientTasksPanel } from "@/components/console/client-tasks-panel";
 import type { TaskRecord, TaskDocRecord } from "@/components/console/task-row";
+import { ClientStatusToggle } from "@/components/console/client-status-toggle";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -23,7 +24,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, email, phone, ghl_contact_id, created_at")
+    .select("id, first_name, last_name, email, phone, ghl_contact_id, created_at, status")
     .eq("id", profileId)
     .single();
 
@@ -119,6 +120,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
             </div>
           </div>
           <div className="acts">
+            <ClientStatusToggle profileId={profileId} initialStatus={profile.status ?? "Active"} />
             {profile.phone && (
               <a className="cbtn ghost" href={`tel:${profile.phone}`}>
                 Call

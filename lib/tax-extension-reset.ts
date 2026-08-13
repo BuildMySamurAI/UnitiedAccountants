@@ -1,6 +1,7 @@
 import { getAllOpportunitiesInPipeline, updateOpportunityCustomFields } from "@/lib/ghl/client";
 import { OPPORTUNITY_FIELDS, PIPELINE_NEW_CORP_ONBOARDING, STAGE_ACTIVE_CLIENT } from "@/lib/ghl/constants";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getInactiveCompanyOpportunityIds } from "@/lib/inactive-clients";
 
 export type ExtensionResetResult = {
   scanned: number;
@@ -13,8 +14,11 @@ export type ExtensionResetResult = {
 // the March 15 / April 15 deadline again rather than carrying over last
 // year's extension flag.
 export async function runAnnualExtensionReset(): Promise<ExtensionResetResult> {
-  const opportunities = await getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING);
-  const activeClients = opportunities.filter((o) => o.pipelineStageId === STAGE_ACTIVE_CLIENT);
+  const [opportunities, inactiveOpportunityIds] = await Promise.all([
+    getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING),
+    getInactiveCompanyOpportunityIds(),
+  ]);
+  const activeClients = opportunities.filter((o) => o.pipelineStageId === STAGE_ACTIVE_CLIENT && !inactiveOpportunityIds.has(o.id));
 
   const reset: ExtensionResetResult["reset"] = [];
 

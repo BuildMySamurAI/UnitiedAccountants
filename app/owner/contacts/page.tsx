@@ -11,6 +11,8 @@ const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Active Client": "g",
 };
 
+type CompanyManager = { legalName: string; ssn: string };
+
 export default async function ContactsPage({
   searchParams,
 }: {
@@ -19,18 +21,105 @@ export default async function ContactsPage({
   const { q } = await searchParams;
   const supabase = await supabaseServer();
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name, email, created_at, companies(id, business_name, pipeline_stage)")
-    .order("created_at", { ascending: false });
+  const [{ data: profiles }, { data: managerAccess }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, first_name, last_name, email, created_at, companies(id, business_name, pipeline_stage, ein)")
+      .order("created_at", { ascending: false }),
+    supabase.from("manager_company_access").select("company_id, managers(legal_name, ssn)"),
+  ]);
+
+  const managersByCompany = new Map<string, CompanyManager[]>();
+  for (const row of managerAccess ?? []) {
+    const mgr = row.managers as unknown as { legal_name: string | null; ssn: string | null } | null;
+    if (!mgr?.legal_name) continue;
+    const list = managersByCompany.get(row.company_id) ?? [];
+    list.push({ legalName: mgr.legal_name, ssn: mgr.ssn ?? "" });
+    managersByCompany.set(row.company_id, list);
+  }
 
   const f = (q ?? "").toLowerCase();
-  const rows = (profiles ?? []).filter((p) => {
-    if (!f) return true;
-    const hay = `${p.first_name ?? ""} ${p.last_name ?? ""} ${p.email ?? ""} ${(p.companies ?? [])
-      .map((c) => c.business_name)
-      .join(" ")}`.toLowerCase();
-    return hay.includes(f);
+
+  type Row = {
+    profileId: string;
+    name: string;
+    email: string | null;
+    createdAt: string;
+    companies: { id: string; business_name: string | null; pipeline_stage: string | null }[];
+    href: string;
+    matchLabel: string | null;
+  };
+
+  const rows: Row[] = (profiles ?? []).flatMap((p): Row[] => {
+    const companyList = p.companies ?? [];
+    const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Unnamed";
+
+    if (!f) {
+      return [
+        {
+          profileId: p.id,
+          name,
+          email: p.email,
+          createdAt: p.created_at,
+          companies: companyList,
+          href: `/owner/contacts/${p.id}`,
+          matchLabel: null,
+        },
+      ];
+    }
+
+    // Client-level match (name, email, any business name) - links to the
+    // client overview, same as before.
+    const clientHaystack = `${name} ${p.email ?? ""} ${companyList.map((c) => c.business_name).join(" ")}`.toLowerCase();
+    if (clientHaystack.includes(f)) {
+      return [
+        {
+          profileId: p.id,
+          name,
+          email: p.email,
+          createdAt: p.created_at,
+          companies: companyList,
+          href: `/owner/contacts/${p.id}`,
+          matchLabel: null,
+        },
+      ];
+    }
+
+    // Otherwise check each company's EIN and managers - a match here is
+    // specific to one company, so it links straight to that company rather
+    // than the general client page.
+    for (const c of companyList) {
+      if (c.ein && c.ein.toLowerCase().includes(f)) {
+        return [
+          {
+            profileId: p.id,
+            name,
+            email: p.email,
+            createdAt: p.created_at,
+            companies: companyList,
+            href: `/owner/contacts/${p.id}/${c.id}`,
+            matchLabel: `Matched EIN ${c.ein} on ${c.business_name ?? "this company"}`,
+          },
+        ];
+      }
+      for (const m of managersByCompany.get(c.id) ?? []) {
+        if (m.legalName.toLowerCase().includes(f) || m.ssn.toLowerCase().includes(f)) {
+          return [
+            {
+              profileId: p.id,
+              name,
+              email: p.email,
+              createdAt: p.created_at,
+              companies: companyList,
+              href: `/owner/contacts/${p.id}/${c.id}`,
+              matchLabel: `Matched manager ${m.legalName}${m.ssn ? ` (SSN ${m.ssn})` : ""} on ${c.business_name ?? "this company"}`,
+            },
+          ];
+        }
+      }
+    }
+
+    return [];
   });
 
   return (
@@ -48,8 +137,8 @@ export default async function ContactsPage({
       <div className="wrap">
         <h2 className="page">Contacts</h2>
         <p className="sub">
-          {profiles?.length ?? 0} clients synced from the portal. Rows with a stacked badge hold more than one company
-          - open them to switch between entities.
+          {profiles?.length ?? 0} clients synced from the portal. Search matches name, email, business name, EIN, or
+          manager name/SSN.
         </p>
 
         <div className="ccard">
@@ -68,39 +157,37 @@ export default async function ContactsPage({
             </thead>
             <tbody>
               {rows.map((p) => {
-                const companies = p.companies ?? [];
-                const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Unnamed";
-                const primaryStage = companies[0]?.pipeline_stage ?? null;
+                const primaryStage = p.companies[0]?.pipeline_stage ?? null;
                 return (
-                  <tr key={p.id} className="click">
+                  <tr key={p.href} className="click">
                     <td>
-                      <Link href={`/owner/contacts/${p.id}`} className="person" style={{ color: "inherit" }}>
-                        <Avatar name={name} id={p.id} />
+                      <Link href={p.href} className="person" style={{ color: "inherit" }}>
+                        <Avatar name={p.name} id={p.profileId} />
                         <div>
                           <div className="name">
-                            {name}
-                            <MultiEntityBadge count={companies.length} />
+                            {p.name}
+                            <MultiEntityBadge count={p.companies.length} />
                           </div>
-                          <div className="meta">{p.email}</div>
+                          <div className="meta">{p.matchLabel ?? p.email}</div>
                         </div>
                       </Link>
                     </td>
                     <td>
-                      {companies.length > 1 ? (
-                        <div className="meta">{companies.map((c) => c.business_name).join(" · ")}</div>
+                      {p.companies.length > 1 ? (
+                        <div className="meta">{p.companies.map((c) => c.business_name).join(" · ")}</div>
                       ) : (
-                        <span className="mono">{companies[0]?.business_name ?? "No company yet"}</span>
+                        <span className="mono">{p.companies[0]?.business_name ?? "No company yet"}</span>
                       )}
                     </td>
                     <td>{primaryStage ? <Pill variant={STAGE_PILL[primaryStage] ?? "n"}>{primaryStage}</Pill> : <Pill variant="n">Unknown</Pill>}</td>
-                    <td className="mono">{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td className="mono">{new Date(p.createdAt).toLocaleDateString()}</td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={4}>
-                    <EmptyState title="No matches" subtitle="Try a name, email, or company." />
+                    <EmptyState title="No matches" subtitle="Try a name, email, business name, EIN, or manager name/SSN." />
                   </td>
                 </tr>
               )}

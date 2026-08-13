@@ -12,6 +12,7 @@ import { ServicesPanel } from "./services-panel";
 import type { ServiceDocRecord } from "./service-row";
 import { ManagersPanel, type ManagerRecord } from "./managers-panel";
 import { CompanyTasksPanel } from "@/components/console/company-tasks-panel";
+import { GoingOutOfBusinessToggle } from "@/components/console/going-out-of-business-toggle";
 import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
@@ -37,7 +38,7 @@ export default async function StaffCompanyPage({
     supabase.from("profiles").select("first_name, last_name").eq("id", profileId).single(),
     supabase
       .from("companies")
-      .select("id, ghl_opportunity_id, team_members(id, full_name)")
+      .select("id, ghl_opportunity_id, going_out_of_business, team_members(id, full_name)")
       .eq("id", companyId)
       .single(),
   ]);
@@ -222,6 +223,8 @@ export default async function StaffCompanyPage({
         <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
 
         <ManagersPanel companyId={companyId} managers={managers} />
+
+        <GoingOutOfBusinessToggle companyId={companyId} initialValue={company.going_out_of_business ?? "No"} createdBy="team" />
 
         <CompanyTasksPanel companyId={companyId} tasks={tasks ?? []} documentsByTask={documentsByTask} assignedTeamMember={assignedTeamMemberForCompany} />
 

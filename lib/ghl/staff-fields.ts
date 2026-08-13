@@ -73,7 +73,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
     title: "eFileSalesTax",
     fields: [
       { key: "efileSalesTaxAdded", dbColumn: "efilesalestax_added", label: "Added?", type: "select", options: ["No", "Yes"] },
-      { key: "efileSalesTaxRegistrationStatus", dbColumn: "efilesalestax_registration_status", label: "Registration Status", type: "select", options: ["Pending", "Active"] },
+      { key: "efileSalesTaxRegistrationStatus", dbColumn: "efilesalestax_registration_status", label: "Registration Status", type: "select", options: ["Pending", "Active", "Inactive"] },
       { key: "efileSalesTaxLoginUsername", dbColumn: "efilesalestax_login_username", label: "Login Username", type: "text" },
       { key: "efileSalesTaxLoginPassword", dbColumn: "efilesalestax_login_password", label: "Login Password", type: "text" },
     ],

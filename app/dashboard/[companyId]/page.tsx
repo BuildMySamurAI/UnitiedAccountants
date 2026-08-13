@@ -10,6 +10,8 @@ import { AutoSaveField } from "./auto-save-field";
 import DocumentUploader from "./document-uploader";
 import { ClientServices } from "./client-services";
 import type { ServiceDocRecord } from "@/app/staff/[profileId]/[companyId]/service-row";
+import { GoingOutOfBusinessToggle } from "@/components/console/going-out-of-business-toggle";
+import { ClientClosingTasks } from "@/components/console/client-closing-tasks";
 
 export default async function CompanyPage({
   params,
@@ -25,7 +27,7 @@ export default async function CompanyPage({
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, ghl_opportunity_id")
+    .select("id, ghl_opportunity_id, going_out_of_business")
     .eq("id", companyId)
     .single();
 
@@ -83,6 +85,22 @@ export default async function CompanyPage({
   const documentsByService: Record<string, ServiceDocRecord[]> = {};
   for (const d of serviceDocuments ?? []) {
     (documentsByService[d.service_id] ??= []).push(d);
+  }
+
+  const { data: closingTasks } = await supabase
+    .from("tasks")
+    .select("id, title, status")
+    .eq("company_id", company.id)
+    .eq("task_type", "closing_process")
+    .order("created_at", { ascending: true });
+  const closingTaskIds = (closingTasks ?? []).map((t) => t.id);
+  const { data: closingTaskDocuments } =
+    closingTaskIds.length > 0
+      ? await supabase.from("task_documents").select("id, task_id, file_name, storage_path").in("task_id", closingTaskIds)
+      : { data: [] };
+  const documentsByClosingTask: Record<string, { id: string; task_id: string; file_name: string; storage_path: string }[]> = {};
+  for (const d of closingTaskDocuments ?? []) {
+    (documentsByClosingTask[d.task_id] ??= []).push(d);
   }
 
   const checklist = [
@@ -188,6 +206,12 @@ export default async function CompanyPage({
             </div>
 
             <ClientServices services={services ?? []} documentsByService={documentsByService} />
+
+            <GoingOutOfBusinessToggle companyId={company.id} initialValue={company.going_out_of_business ?? "No"} createdBy="client" />
+
+            {(company.going_out_of_business === "Yes" || (closingTasks?.length ?? 0) > 0) && (
+              <ClientClosingTasks companyId={company.id} tasks={closingTasks ?? []} documentsByTask={documentsByClosingTask} />
+            )}
 
             {bookkeepingCycleOpen && (
               <div className="ccard" style={{ marginBottom: 16 }}>

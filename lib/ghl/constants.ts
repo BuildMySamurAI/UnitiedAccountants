@@ -50,6 +50,8 @@ export const OPPORTUNITY_FIELDS = {
   efileSalesTaxLoginUsername: "kn5nTu4QzT2G3j9XusXO",
   efileSalesTaxLoginPassword: "XGigDhKf0EQX6Qo3RUeO", // plain text, per owner decision (matches the Manager SSN precedent)
 
+  goingOutOfBusiness: "Wum75P8m1dTgqRlvyu0w",
+
   rtApproved: "Petf6B0LYZ6z2VuMDMyI", // staff-only
   rtAccountNumber: "h3gTWpy0InQqVtaUhwEW",
   rtFilingFrequency: "HkdVE8nHkndzKXZeFYU2",

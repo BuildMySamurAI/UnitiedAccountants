@@ -29,7 +29,7 @@ export const OPPORTUNITY_FIELDS = {
   mailingAddress: "1EyFMcLHH1WozOzU5cum",
   physicalAddress: "HywP1jrFgQ9ehKqTC7vt",
 
-  sunbizFilingConfirmation: "gMhB9YzSsTeqzsCUB2Dt",
+  sunbizFilingConfirmation: "gMhB9YzSsTeqzsCUB2Dt", // deprecated - dropped from the portal, Tracking Number is the field of record
   sunbizTrackingNumber: "WTatASHPcFGXlMm8HHRA",
   sunbizFilingDate: "a78nLwymbfHD1hm0JMTK",
   sunbizApproved: "qaOpgpL3o9yv5Wfm8FAT", // staff-only
@@ -47,8 +47,8 @@ export const OPPORTUNITY_FIELDS = {
   efileSalesTaxUsername: "iwKOpsBZGfeY0TW6lsOu", // deprecated - replaced by efileSalesTaxAdded + the login fields below, kept only for old data
   efileSalesTaxRegistrationStatus: "B1Ryhj4z95LwJPi9HKp0",
   efileSalesTaxAdded: "Y8mXXuhbcsh7L8v11P0M",
-  efileSalesTaxLoginUsername: "kn5nTu4QzT2G3j9XusXO",
-  efileSalesTaxLoginPassword: "XGigDhKf0EQX6Qo3RUeO", // plain text, per owner decision (matches the Manager SSN precedent)
+  efileSalesTaxLoginUsername: "kn5nTu4QzT2G3j9XusXO", // deprecated - a shared login is used across all clients, no per-client credentials needed
+  efileSalesTaxLoginPassword: "XGigDhKf0EQX6Qo3RUeO", // deprecated - see above
 
   goingOutOfBusiness: "Wum75P8m1dTgqRlvyu0w",
 
@@ -59,7 +59,7 @@ export const OPPORTUNITY_FIELDS = {
   rtSubmissionConfirmation: "OkwhlaCkynglKmUEcqjq", // staff-only (submission evidence)
 
   surePayrollSetupCompletion: "aUcn14Xy7laNQtJsT4Jg",
-  surePayrollDepositSchedule: "Nup3ISSNtUuauubXqZhO",
+  surePayrollDepositSchedule: "Nup3ISSNtUuauubXqZhO", // deprecated - dropped from the portal
   payrollFilingFrequency: "2IhPRSJDQj7EoJRgVNlE",
   payrollProcessingDate: "ciHIXqMhD8dahIgXk54m",
 
@@ -78,11 +78,12 @@ export const OPPORTUNITY_FIELDS = {
   currentMonth: "OLXSJwc0VEJ3tV6w5tNe", // staff-only
   statementsReceived: "m8qPGSSYJ3DTlpPUXsMM", // staff-only
   reconciliationDifference: "Wlxq7oTIc09cG1Zw3sXJ", // staff-only
-  monthLocked: "mT4RHjsk0gaaGFVAYwlG", // staff-only
-  monthLockedDate: "DLRCD86Gmf0QqpYJnkRy", // staff-only
+  monthLocked: "mT4RHjsk0gaaGFVAYwlG", // deprecated - replaced by reconciliationCompletionDate
+  monthLockedDate: "DLRCD86Gmf0QqpYJnkRy", // deprecated - replaced by reconciliationCompletionDate
+  reconciliationCompletionDate: "tJzPaVIMCBLDFXryEX3i", // staff-only - set = cycle closed for this month, matches the old monthLocked's role
 
   // Monthly bookkeeping documents - only shown while the cycle is open
-  // (monthLocked !== "Yes"). Client-uploaded only:
+  // (reconciliationCompletionDate not yet set). Client-uploaded only:
   bankStatements: "BdqzzVPAacG1wcc4iKsj",
   creditCardStatement: "y3sU5jMXSTMTa4c7pF9B",
   merchantStatement: "coKSbtVdVtf00P2AU1bR",
@@ -109,8 +110,7 @@ export const STAFF_ONLY_OPPORTUNITY_FIELDS = new Set<string>([
   OPPORTUNITY_FIELDS.currentMonth,
   OPPORTUNITY_FIELDS.statementsReceived,
   OPPORTUNITY_FIELDS.reconciliationDifference,
-  OPPORTUNITY_FIELDS.monthLocked,
-  OPPORTUNITY_FIELDS.monthLockedDate,
+  OPPORTUNITY_FIELDS.reconciliationCompletionDate,
 ]);
 
 export const CONTACT_FIELDS = {

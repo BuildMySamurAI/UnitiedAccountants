@@ -16,7 +16,9 @@ export type MonthlyResetResult = {
 
 // Runs on the 1st of every month - resets the monthly bookkeeping cycle
 // fields for every opportunity currently in "Active Client" stage. Only
-// touches these 6 fields; everything else on the opportunity is untouched.
+// touches these 5 fields; everything else on the opportunity is untouched.
+// Clearing reconciliationCompletionDate re-opens the cycle for the new
+// month (it's set = closed, same role the old monthLocked flag had).
 export async function runMonthlyBookkeepingReset(): Promise<MonthlyResetResult> {
   const [opportunities, inactiveOpportunityIds] = await Promise.all([
     getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING),
@@ -33,8 +35,7 @@ export async function runMonthlyBookkeepingReset(): Promise<MonthlyResetResult> 
       { id: OPPORTUNITY_FIELDS.currentMonth, field_value: currentMonth },
       { id: OPPORTUNITY_FIELDS.statementsReceived, field_value: "No" },
       { id: OPPORTUNITY_FIELDS.reconciliationDifference, field_value: "" },
-      { id: OPPORTUNITY_FIELDS.monthLocked, field_value: "No" },
-      { id: OPPORTUNITY_FIELDS.monthLockedDate, field_value: "" },
+      { id: OPPORTUNITY_FIELDS.reconciliationCompletionDate, field_value: "" },
     ]);
 
     // Best-effort cache sync, same as everywhere else these fields mirror.
@@ -45,8 +46,7 @@ export async function runMonthlyBookkeepingReset(): Promise<MonthlyResetResult> 
         current_month: currentMonth,
         statements_received: "No",
         reconciliation_difference: null,
-        month_locked: "No",
-        month_locked_date: null,
+        reconciliation_completion_date: null,
       })
       .eq("ghl_opportunity_id", opportunity.id);
 

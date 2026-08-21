@@ -51,7 +51,7 @@ export default async function StaffCompanyPage({
   const assignedTeamMemberForCompany = company.team_members as unknown as { id: string; full_name: string } | null;
   const assignedName = assignedTeamMemberForCompany?.full_name;
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
-  const bookkeepingCycleOpen = customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked) !== "Yes";
+  const bookkeepingCycleOpen = !customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate);
   const stageIndex = PIPELINE_STAGES.findIndex((s) => s.id === opportunity.pipelineStageId);
   const stageName = stageIndex >= 0 ? PIPELINE_STAGES[stageIndex].name : "Unknown";
 
@@ -183,7 +183,7 @@ export default async function StaffCompanyPage({
             </header>
             <div style={{ padding: "4px 15px" }}>
               {group.fields.map((f) => {
-                const raw = customFieldValue(cf, OPPORTUNITY_FIELDS[f.key]) ?? "";
+                const raw = customFieldValue(cf, OPPORTUNITY_FIELDS[f.key]) ?? f.defaultValue ?? "";
                 const value = f.type === "date" && raw ? raw.slice(0, 10) : raw;
                 return (
                   <StaffField

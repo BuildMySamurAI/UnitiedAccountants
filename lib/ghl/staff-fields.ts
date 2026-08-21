@@ -16,6 +16,10 @@ export type StaffFieldConfig = {
   label: string;
   type: StaffFieldType;
   options?: string[];
+  // Shown (and saved as) this value when the field has never been touched -
+  // for fields where "blank" and a real option mean the same thing, so the
+  // dropdown should say so rather than showing a misleading "--".
+  defaultValue?: string;
 };
 
 export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[] = [
@@ -30,7 +34,6 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
   {
     title: "Sunbiz",
     fields: [
-      { key: "sunbizFilingConfirmation", dbColumn: "sunbiz_filing_confirmation", label: "Filing Confirmation", type: "text" },
       { key: "sunbizTrackingNumber", dbColumn: "sunbiz_tracking_number", label: "Tracking Number", type: "text" },
       { key: "sunbizFilingDate", dbColumn: "sunbiz_filing_date", label: "Filing Date", type: "date" },
       { key: "sunbizApproved", dbColumn: "sunbiz_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },
@@ -56,6 +59,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
         label: "Extension Filed This Year?",
         type: "select",
         options: ["No", "Yes"],
+        defaultValue: "No",
       },
     ],
   },
@@ -74,8 +78,6 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
     fields: [
       { key: "efileSalesTaxAdded", dbColumn: "efilesalestax_added", label: "Added?", type: "select", options: ["No", "Yes"] },
       { key: "efileSalesTaxRegistrationStatus", dbColumn: "efilesalestax_registration_status", label: "Registration Status", type: "select", options: ["Pending", "Active", "Inactive"] },
-      { key: "efileSalesTaxLoginUsername", dbColumn: "efilesalestax_login_username", label: "Login Username", type: "text" },
-      { key: "efileSalesTaxLoginPassword", dbColumn: "efilesalestax_login_password", label: "Login Password", type: "text" },
     ],
   },
   {
@@ -91,7 +93,6 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
     title: "Payroll (SurePayroll)",
     fields: [
       { key: "surePayrollSetupCompletion", dbColumn: "surepayroll_setup_completion", label: "Setup Completion", type: "select", options: ["Pending", "Complete"] },
-      { key: "surePayrollDepositSchedule", dbColumn: "surepayroll_deposit_schedule", label: "Deposit Schedule", type: "text" },
       { key: "payrollFilingFrequency", dbColumn: "payroll_filing_frequency", label: "Filing Frequency", type: "select", options: ["Weekly", "Bi-Weekly", "Monthly"] },
       { key: "payrollProcessingDate", dbColumn: "payroll_processing_date", label: "Processing Date", type: "date" },
     ],
@@ -109,8 +110,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
       { key: "currentMonth", dbColumn: "current_month", label: "Current Month", type: "text" },
       { key: "statementsReceived", dbColumn: "statements_received", label: "Statements Received?", type: "select", options: ["Yes", "No"] },
       { key: "reconciliationDifference", dbColumn: "reconciliation_difference", label: "Reconciliation Difference", type: "number" },
-      { key: "monthLocked", dbColumn: "month_locked", label: "Month Locked?", type: "select", options: ["Yes", "No"] },
-      { key: "monthLockedDate", dbColumn: "month_locked_date", label: "Month Locked Date", type: "date" },
+      { key: "reconciliationCompletionDate", dbColumn: "reconciliation_completion_date", label: "Reconciliation Completion Date", type: "date" },
     ],
   },
 ];

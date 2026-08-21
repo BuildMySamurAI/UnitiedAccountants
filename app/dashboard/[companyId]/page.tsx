@@ -56,7 +56,7 @@ export default async function CompanyPage({
 
   // The monthly bookkeeping document fields only show up while the cycle is
   // open - hidden entirely once staff locks the month, until the next reset.
-  const bookkeepingCycleOpen = field("monthLocked") !== "Yes";
+  const bookkeepingCycleOpen = !field("reconciliationCompletionDate");
 
   const { data: notifications } = await supabase
     .from("notifications")
@@ -115,7 +115,6 @@ export default async function CompanyPage({
   const allDone = completed === total;
 
   const facts: [string, string | undefined][] = [
-    ["Sunbiz Filing Confirmation", field("sunbizFilingConfirmation")],
     ["Sunbiz Tracking Number", field("sunbizTrackingNumber")],
     ["Sunbiz Filing Date", field("sunbizFilingDate")],
     ["EIN", field("ein")],
@@ -129,7 +128,6 @@ export default async function CompanyPage({
     ["RT Filing Frequency", field("rtFilingFrequency")],
     ["RT Submission Date", field("rtSubmissionDate")],
     ["Payroll Setup Completion", field("surePayrollSetupCompletion")],
-    ["Payroll Deposit Schedule", field("surePayrollDepositSchedule")],
     ["Payroll Filing Frequency", field("payrollFilingFrequency")],
     ["Payroll Processing Date", field("payrollProcessingDate")],
   ];

@@ -24,7 +24,7 @@ export default async function TodayPage() {
           company: c,
           stageId: opportunity.pipelineStageId as string,
           ein: customFieldValue(cf, OPPORTUNITY_FIELDS.ein),
-          monthLocked: customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked),
+          reconciliationCompletionDate: customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate),
           statementsReceived: customFieldValue(cf, OPPORTUNITY_FIELDS.statementsReceived),
           currentMonth: customFieldValue(cf, OPPORTUNITY_FIELDS.currentMonth),
           payrollProcessingDate: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollProcessingDate),
@@ -42,7 +42,7 @@ export default async function TodayPage() {
   ).size;
   const inProgress = ok.filter((d) => d.stageId !== activeStageId).length;
   const unassigned = list.filter((c) => !c.assigned_team_member_id).length;
-  const awaitingStatements = ok.filter((d) => d.monthLocked !== "Yes" && d.statementsReceived !== "Yes").length;
+  const awaitingStatements = ok.filter((d) => !d.reconciliationCompletionDate && d.statementsReceived !== "Yes").length;
 
   type Flag = { tone: "r" | "a" | "b"; text: string; sub: string; href: string };
   const flags: Flag[] = [];
@@ -58,7 +58,7 @@ export default async function TodayPage() {
     if (!d.company.assigned_team_member_id) {
       flags.push({ tone: "b", text: `${d.company.business_name} isn't assigned to a team member yet.`, sub: clientName, href });
     }
-    if (d.monthLocked !== "Yes" && d.statementsReceived !== "Yes") {
+    if (!d.reconciliationCompletionDate && d.statementsReceived !== "Yes") {
       flags.push({ tone: "a", text: `${clientName} hasn't sent statements for ${d.currentMonth || "this month"} yet.`, sub: d.company.business_name ?? "", href });
     }
   }

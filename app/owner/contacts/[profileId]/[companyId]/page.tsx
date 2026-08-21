@@ -51,7 +51,7 @@ export default async function CompanyDetailPage({
   const opportunity = await getOpportunity(company.ghl_opportunity_id);
   const cf = opportunity.customFields;
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
-  const bookkeepingCycleOpen = customFieldValue(cf, OPPORTUNITY_FIELDS.monthLocked) !== "Yes";
+  const bookkeepingCycleOpen = !customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate);
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
   const stageIndex = PIPELINE_STAGES.findIndex((s) => s.id === opportunity.pipelineStageId);
   const stageName = stageIndex >= 0 ? PIPELINE_STAGES[stageIndex].name : "Unknown";
@@ -177,7 +177,7 @@ export default async function CompanyDetailPage({
             </header>
             <div style={{ padding: "4px 15px" }}>
               {group.fields.map((f) => {
-                const raw = customFieldValue(cf, OPPORTUNITY_FIELDS[f.key]) ?? "";
+                const raw = customFieldValue(cf, OPPORTUNITY_FIELDS[f.key]) ?? f.defaultValue ?? "";
                 const value = f.type === "date" && raw ? raw.slice(0, 10) : raw;
                 return (
                   <StaffField

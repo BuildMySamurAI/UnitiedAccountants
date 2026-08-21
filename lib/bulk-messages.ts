@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAllContacts } from "@/lib/ghl/client";
+import { getAllContacts, getOpportunity } from "@/lib/ghl/client";
+import { customFieldValue } from "@/lib/ghl/fields";
+import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
+import type { GhlFieldServiceFilterKey } from "@/lib/message-service-filters";
 
 export type BulkMessageRecipient = {
   profileId: string;
@@ -8,6 +11,7 @@ export type BulkMessageRecipient = {
   tags: string[];
   dnd: boolean;
   companyNames: string[];
+  serviceTypes: string[];
 };
 
 // Builds the audience for bulk messaging. Deliberately queries `profiles`
@@ -22,27 +26,64 @@ export async function getBulkMessageRecipients(supabase: SupabaseClient): Promis
     // reachable via the Communication panel on their own contact page,
     // just not part of this "everyone active" audience.
     supabase.from("profiles").select("id, ghl_contact_id, first_name, last_name, email").eq("status", "Active"),
-    supabase.from("companies").select("profile_id, business_name"),
+    supabase.from("companies").select("id, profile_id, business_name, ghl_opportunity_id"),
     getAllContacts(),
   ]);
 
+  const companyList = companies ?? [];
+
+  // Which of the 4 GHL-field services each company actually has active -
+  // read live, not from the Supabase mirror, per "use current service
+  // selection/status data". A company that errors (e.g. deleted in GHL but
+  // not yet synced) just contributes no service tags rather than failing
+  // the whole audience build.
+  const companyServiceTags = await Promise.all(
+    companyList.map(async (c): Promise<{ companyId: string; tags: GhlFieldServiceFilterKey[] }> => {
+      try {
+        const opportunity = await getOpportunity(c.ghl_opportunity_id);
+        const cf = opportunity.customFields;
+        const tags: GhlFieldServiceFilterKey[] = [];
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxFilingFrequency)) tags.push("sales_tax");
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.payrollFilingFrequency)) tags.push("payroll");
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.rtFilingFrequency)) tags.push("reemployment_tax");
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.bookkeepingStatus)) tags.push("bookkeeping");
+        return { companyId: c.id, tags };
+      } catch {
+        return { companyId: c.id, tags: [] };
+      }
+    })
+  );
+  const ghlServiceTagsByCompany = new Map(companyServiceTags.map((c) => [c.companyId, c.tags]));
+
+  const { data: activeServices } = await supabase.from("company_services").select("company_id, service_type").eq("status", "Active");
+  const companyServicesByCompany = new Map<string, string[]>();
+  for (const s of activeServices ?? []) {
+    if (!companyServicesByCompany.has(s.company_id)) companyServicesByCompany.set(s.company_id, []);
+    companyServicesByCompany.get(s.company_id)!.push(s.service_type);
+  }
+
   const contactById = new Map(contacts.map((c) => [c.id, c]));
-  const companiesByProfile = new Map<string, string[]>();
-  for (const c of companies ?? []) {
-    if (!c.business_name) continue;
+  const companiesByProfile = new Map<string, { businessName: string; serviceTypes: Set<string> }[]>();
+  for (const c of companyList) {
     if (!companiesByProfile.has(c.profile_id)) companiesByProfile.set(c.profile_id, []);
-    companiesByProfile.get(c.profile_id)!.push(c.business_name);
+    const serviceTypes = new Set<string>([...(ghlServiceTagsByCompany.get(c.id) ?? []), ...(companyServicesByCompany.get(c.id) ?? [])]);
+    companiesByProfile.get(c.profile_id)!.push({ businessName: c.business_name ?? "", serviceTypes });
   }
 
   return (profiles ?? []).map((p) => {
     const contact = p.ghl_contact_id ? contactById.get(p.ghl_contact_id) : undefined;
+    const profileCompanies = companiesByProfile.get(p.id) ?? [];
+    const serviceTypes = new Set<string>();
+    for (const c of profileCompanies) for (const s of c.serviceTypes) serviceTypes.add(s);
+
     return {
       profileId: p.id,
       contactId: contact?.id ?? null,
       name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Unnamed client",
       tags: contact?.tags ?? [],
       dnd: contact?.dnd ?? false,
-      companyNames: companiesByProfile.get(p.id) ?? [],
+      companyNames: profileCompanies.filter((c) => c.businessName).map((c) => c.businessName),
+      serviceTypes: [...serviceTypes],
     };
   });
 }

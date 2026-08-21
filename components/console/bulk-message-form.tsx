@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import { sendBulkMessage } from "@/lib/bulk-messages-actions";
 import type { BulkMessageRecipient } from "@/lib/bulk-messages";
+import { MESSAGE_SERVICE_FILTERS } from "@/lib/message-service-filters";
 import { EmptyState } from "./ui";
 
 export function BulkMessageForm({ recipients }: { recipients: BulkMessageRecipient[] }) {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [type, setType] = useState<"SMS" | "Email">("SMS");
   const [message, setMessage] = useState("");
@@ -15,22 +17,40 @@ export function BulkMessageForm({ recipients }: { recipients: BulkMessageRecipie
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const serviceLabelByKey = useMemo(() => new Map(MESSAGE_SERVICE_FILTERS.map((s) => [s.key, s.label])), []);
+
   const allTags = useMemo(() => {
     const s = new Set<string>();
     for (const r of recipients) for (const t of r.tags) s.add(t);
     return [...s].sort();
   }, [recipients]);
 
+  // Tags and services each match "any selected" on their own, but combine
+  // with each other as AND - picking a service narrows further within
+  // whatever the tag filter already selected, so "Payroll" + "VIP" means
+  // payroll clients who are also tagged VIP, not either group.
   const filtered = useMemo(() => {
-    if (selectedTags.size === 0) return recipients;
-    return recipients.filter((r) => r.tags.some((t) => selectedTags.has(t)));
-  }, [recipients, selectedTags]);
+    return recipients.filter((r) => {
+      const tagMatch = selectedTags.size === 0 || r.tags.some((t) => selectedTags.has(t));
+      const serviceMatch = selectedServices.size === 0 || r.serviceTypes.some((s) => selectedServices.has(s));
+      return tagMatch && serviceMatch;
+    });
+  }, [recipients, selectedTags, selectedServices]);
 
   function toggleTag(tag: string) {
     setSelectedTags((prev) => {
       const next = new Set(prev);
       if (next.has(tag)) next.delete(tag);
       else next.add(tag);
+      return next;
+    });
+  }
+
+  function toggleService(service: string) {
+    setSelectedServices((prev) => {
+      const next = new Set(prev);
+      if (next.has(service)) next.delete(service);
+      else next.add(service);
       return next;
     });
   }
@@ -95,6 +115,29 @@ export function BulkMessageForm({ recipients }: { recipients: BulkMessageRecipie
           </div>
         </div>
 
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Filter by service</h3>
+          </header>
+          <div style={{ padding: "12px 15px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {MESSAGE_SERVICE_FILTERS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => toggleService(s.key)}
+                className="cbtn ghost"
+                style={{
+                  fontSize: 11,
+                  padding: "5px 10px",
+                  background: selectedServices.has(s.key) ? "var(--green-soft, #e4efe9)" : undefined,
+                  borderColor: selectedServices.has(s.key) ? "var(--green)" : undefined,
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="ccard">
           <header>
             <h3>Recipients</h3>
@@ -126,6 +169,7 @@ export function BulkMessageForm({ recipients }: { recipients: BulkMessageRecipie
                     </div>
                     <div className="y">
                       {r.tags.length > 0 ? r.tags.join(", ") : "no tags"}
+                      {r.serviceTypes.length > 0 && ` - ${r.serviceTypes.map((s) => serviceLabelByKey.get(s) ?? s).join(", ")}`}
                       {r.dnd && " - opted out"}
                       {!r.contactId && " - no CRM contact"}
                     </div>

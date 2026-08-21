@@ -22,13 +22,32 @@ export type StaffFieldConfig = {
   defaultValue?: string;
 };
 
-export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[] = [
+export type StaffFieldGroup = {
+  title: string;
+  fields: StaffFieldConfig[];
+  // When set, this group (and its fields) only shows once the named
+  // opportunity field reads "Yes" - lets Sales Tax/Payroll/RT/Bookkeeping
+  // behave like the add/remove Services system: hidden and reminder-free
+  // until a client actually has that service.
+  serviceFlag?: keyof typeof OPPORTUNITY_FIELDS;
+};
+
+export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Business",
     fields: [
       { key: "businessName", dbColumn: "business_name", label: "Business Name", type: "text" },
       { key: "mailingAddress", dbColumn: "mailing_address", label: "Mailing Address", type: "text" },
       { key: "physicalAddress", dbColumn: "physical_address", label: "Physical Address", type: "text" },
+    ],
+  },
+  {
+    title: "Active Services",
+    fields: [
+      { key: "salesTaxServiceEnabled", dbColumn: "sales_tax_service_enabled", label: "Sales Tax", type: "select", options: ["No", "Yes"] },
+      { key: "payrollServiceEnabled", dbColumn: "payroll_service_enabled", label: "Payroll", type: "select", options: ["No", "Yes"] },
+      { key: "rtServiceEnabled", dbColumn: "rt_service_enabled", label: "Reemployment Tax (RT)", type: "select", options: ["No", "Yes"] },
+      { key: "bookkeepingServiceEnabled", dbColumn: "bookkeeping_service_enabled", label: "Bookkeeping", type: "select", options: ["No", "Yes"] },
     ],
   },
   {
@@ -65,6 +84,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
   },
   {
     title: "Sales Tax",
+    serviceFlag: "salesTaxServiceEnabled",
     fields: [
       { key: "salesTaxApproved", dbColumn: "sales_tax_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },
       { key: "salesTaxCertificateNumber", dbColumn: "sales_tax_certificate_number", label: "Certificate Number", type: "text" },
@@ -75,6 +95,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
   },
   {
     title: "eFileSalesTax",
+    serviceFlag: "salesTaxServiceEnabled",
     fields: [
       { key: "efileSalesTaxAdded", dbColumn: "efilesalestax_added", label: "Added?", type: "select", options: ["No", "Yes"] },
       { key: "efileSalesTaxRegistrationStatus", dbColumn: "efilesalestax_registration_status", label: "Registration Status", type: "select", options: ["Pending", "Active", "Inactive"] },
@@ -82,6 +103,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
   },
   {
     title: "Reemployment Tax (RT)",
+    serviceFlag: "rtServiceEnabled",
     fields: [
       { key: "rtApproved", dbColumn: "rt_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },
       { key: "rtAccountNumber", dbColumn: "rt_account_number", label: "Account Number", type: "text" },
@@ -91,6 +113,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
   },
   {
     title: "Payroll (SurePayroll)",
+    serviceFlag: "payrollServiceEnabled",
     fields: [
       { key: "surePayrollSetupCompletion", dbColumn: "surepayroll_setup_completion", label: "Setup Completion", type: "select", options: ["Pending", "Complete"] },
       { key: "payrollFilingFrequency", dbColumn: "payroll_filing_frequency", label: "Filing Frequency", type: "select", options: ["Weekly", "Bi-Weekly", "Monthly"] },
@@ -99,6 +122,7 @@ export const STAFF_FIELD_GROUPS: { title: string; fields: StaffFieldConfig[] }[]
   },
   {
     title: "Bookkeeping",
+    serviceFlag: "bookkeepingServiceEnabled",
     fields: [
       {
         key: "bookkeepingStatus",

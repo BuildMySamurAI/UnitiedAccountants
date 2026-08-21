@@ -51,7 +51,9 @@ export default async function StaffCompanyPage({
   const assignedTeamMemberForCompany = company.team_members as unknown as { id: string; full_name: string } | null;
   const assignedName = assignedTeamMemberForCompany?.full_name;
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
-  const bookkeepingCycleOpen = !customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate);
+  const bookkeepingCycleOpen =
+    customFieldValue(cf, OPPORTUNITY_FIELDS.bookkeepingServiceEnabled) === "Yes" &&
+    !customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate);
   const stageIndex = PIPELINE_STAGES.findIndex((s) => s.id === opportunity.pipelineStageId);
   const stageName = stageIndex >= 0 ? PIPELINE_STAGES[stageIndex].name : "Unknown";
 
@@ -176,7 +178,9 @@ export default async function StaffCompanyPage({
           </div>
         </div>
 
-        {STAFF_FIELD_GROUPS.map((group) => (
+        {STAFF_FIELD_GROUPS.filter(
+          (group) => !group.serviceFlag || customFieldValue(cf, OPPORTUNITY_FIELDS[group.serviceFlag]) === "Yes"
+        ).map((group) => (
           <div key={group.title} className="ccard" style={{ marginBottom: 16 }}>
             <header>
               <h3>{group.title}</h3>

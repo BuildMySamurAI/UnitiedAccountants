@@ -1,4 +1,5 @@
-import { getAllOpportunitiesInPipeline, updateOpportunityCustomFields } from "@/lib/ghl/client";
+import { getAllOpportunitiesInPipeline, getOpportunity, updateOpportunityCustomFields } from "@/lib/ghl/client";
+import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS, PIPELINE_NEW_CORP_ONBOARDING, STAGE_ACTIVE_CLIENT } from "@/lib/ghl/constants";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getInactiveCompanyOpportunityIds } from "@/lib/inactive-clients";
@@ -29,7 +30,10 @@ export async function runMonthlyBookkeepingReset(): Promise<MonthlyResetResult> 
   const currentMonth = currentMonthYYYYMM();
   const reset: MonthlyResetResult["reset"] = [];
 
-  for (const opportunity of activeClients) {
+  for (const summary of activeClients) {
+    const opportunity = await getOpportunity(summary.id);
+    if (customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.bookkeepingServiceEnabled) !== "Yes") continue;
+
     await updateOpportunityCustomFields(opportunity.id, [
       { id: OPPORTUNITY_FIELDS.bookkeepingStatus, field_value: "Statements Pending" },
       { id: OPPORTUNITY_FIELDS.currentMonth, field_value: currentMonth },

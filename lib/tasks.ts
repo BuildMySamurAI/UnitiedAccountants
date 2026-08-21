@@ -1,8 +1,8 @@
-// Per-company or per-client task tracking. EBT Application and the closing
-// process are fixed task types the portal creates itself; 'custom' covers
-// ad-hoc requests from either staff or the client.
-export const TASK_TYPES = [{ key: "ebt_application", label: "EBT Application" }] as const;
-
+// Per-company or per-client task tracking. 'closing_process' is the only
+// fixed type the portal still creates itself (via the Going Out of Business
+// toggle); 'custom' covers everything staff or the client add by hand.
+// 'ebt_application' is kept in the type union only for old rows - EBT moved
+// to being a company_services type, it's no longer offered as a task.
 export type TaskTypeKey = "ebt_application" | "custom" | "closing_process";
 
 export const TASK_STATUSES = ["Not Started", "In Progress", "Complete"] as const;

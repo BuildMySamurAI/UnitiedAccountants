@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateCompanyService } from "./services-actions";
 import { ServiceDocumentUploader } from "./service-document-uploader";
-import { SERVICE_TYPE_LABEL } from "@/lib/services";
+import { SERVICE_TYPE_LABEL, SERVICE_TYPES_WITHOUT_DEADLINE } from "@/lib/services";
 import type { ServiceTypeKey } from "@/lib/services";
 
 export type ServiceRecord = {
@@ -42,20 +42,22 @@ export function ServiceRow({ service, documents }: { service: ServiceRecord; doc
 
         <input
           type="text"
-          placeholder="License #"
+          placeholder={service.service_type === "ebt" ? "Account Number" : "License #"}
           value={licenseNumber}
           onChange={(e) => setLicenseNumber(e.target.value)}
           onBlur={() => save({ licenseNumber })}
           style={{ width: 130, fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
         />
 
-        <input
-          type="date"
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          onBlur={() => save({ deadlineDate: deadline })}
-          style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        />
+        {!SERVICE_TYPES_WITHOUT_DEADLINE.has(service.service_type) && (
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            onBlur={() => save({ deadlineDate: deadline })}
+            style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
+        )}
 
         <select
           value={service.status}

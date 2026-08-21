@@ -7,7 +7,12 @@ export const SERVICE_TYPES = [
   { key: "corp_renewal", label: "Corporation Renewal" },
   { key: "food_permit", label: "Food Permit" },
   { key: "sales_tax_cert", label: "Sales Tax Certificate Renewal" },
+  { key: "ebt", label: "EBT" },
 ] as const;
+
+// EBT has no renewal cycle (no deadline) and license_number holds its
+// account number instead of a license number - both panels branch on this.
+export const SERVICE_TYPES_WITHOUT_DEADLINE = new Set<string>(["ebt"]);
 
 export type ServiceTypeKey = (typeof SERVICE_TYPES)[number]["key"];
 

@@ -77,6 +77,8 @@ export async function runPayrollReminderJob(): Promise<PayrollReminderResult> {
     if (inactiveOpportunityIds.has(summary.id)) continue;
 
     const opportunity = await getOpportunity(summary.id);
+    if (customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.payrollServiceEnabled) !== "Yes") continue;
+
     const processingDate = customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.payrollProcessingDate);
     if (!processingDate) continue;
     if (!isBeforeToday(processingDate)) continue;

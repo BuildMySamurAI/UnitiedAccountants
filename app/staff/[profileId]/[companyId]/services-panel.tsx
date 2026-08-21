@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCompanyService } from "./services-actions";
 import { ServiceRow, type ServiceRecord, type ServiceDocRecord } from "./service-row";
-import { SERVICE_TYPES, DBPR_LICENSE_TYPES, type ServiceTypeKey } from "@/lib/services";
+import { SERVICE_TYPES, SERVICE_TYPES_WITHOUT_DEADLINE, DBPR_LICENSE_TYPES, type ServiceTypeKey } from "@/lib/services";
 import { suggestedServiceDeadline } from "@/lib/service-deadlines";
 import { EmptyState } from "@/components/console/ui";
 
@@ -55,7 +55,7 @@ export function ServicesPanel({
   return (
     <div className="ccard" style={{ marginBottom: 16 }}>
       <header>
-        <h3>Services (DBPR, Corp Renewal, Food Permit, Sales Tax Cert)</h3>
+        <h3>Services (DBPR, Corp Renewal, Food Permit, Sales Tax Cert, EBT)</h3>
         <span className="hint">{active.length} active</span>
       </header>
 
@@ -95,18 +95,20 @@ export function ServicesPanel({
 
         <input
           type="text"
-          placeholder="License #"
+          placeholder={serviceType === "ebt" ? "Account Number" : "License #"}
           value={licenseNumber}
           onChange={(e) => setLicenseNumber(e.target.value)}
           style={{ width: 130, fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
         />
 
-        <input
-          type="date"
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        />
+        {!SERVICE_TYPES_WITHOUT_DEADLINE.has(serviceType) && (
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
+        )}
 
         <button onClick={handleAdd} disabled={adding} className="cbtn">
           {adding ? "Adding..." : "+ Add service"}

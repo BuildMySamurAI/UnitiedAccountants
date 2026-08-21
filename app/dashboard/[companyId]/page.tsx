@@ -56,7 +56,7 @@ export default async function CompanyPage({
 
   // The monthly bookkeeping document fields only show up while the cycle is
   // open - hidden entirely once staff locks the month, until the next reset.
-  const bookkeepingCycleOpen = !field("reconciliationCompletionDate");
+  const bookkeepingCycleOpen = field("bookkeepingServiceEnabled") === "Yes" && !field("reconciliationCompletionDate");
 
   const { data: notifications } = await supabase
     .from("notifications")
@@ -114,22 +114,37 @@ export default async function CompanyPage({
   const total = checklist.length;
   const allDone = completed === total;
 
+  // Same "only show what's actually an active service" rule as the staff
+  // side - a service that's off (or never configured) shows none of its
+  // facts here either, not just blank ones.
   const facts: [string, string | undefined][] = [
     ["Sunbiz Tracking Number", field("sunbizTrackingNumber")],
     ["Sunbiz Filing Date", field("sunbizFilingDate")],
     ["EIN", field("ein")],
-    ["Sales Tax Certificate Number", field("salesTaxCertificateNumber")],
-    ["Business Partner Number", field("businessPartnerNumber")],
-    ["Sales Tax Filing Frequency", field("salesTaxFilingFrequency")],
-    ["Sales Tax Submission Date", field("salesTaxSubmissionDate")],
-    ["E-File Sales Tax Added?", field("efileSalesTaxAdded")],
-    ["eFileSalesTax Registration Status", field("efileSalesTaxRegistrationStatus")],
-    ["RT Account Number", field("rtAccountNumber")],
-    ["RT Filing Frequency", field("rtFilingFrequency")],
-    ["RT Submission Date", field("rtSubmissionDate")],
-    ["Payroll Setup Completion", field("surePayrollSetupCompletion")],
-    ["Payroll Filing Frequency", field("payrollFilingFrequency")],
-    ["Payroll Processing Date", field("payrollProcessingDate")],
+    ...(field("salesTaxServiceEnabled") === "Yes"
+      ? ([
+          ["Sales Tax Certificate Number", field("salesTaxCertificateNumber")],
+          ["Business Partner Number", field("businessPartnerNumber")],
+          ["Sales Tax Filing Frequency", field("salesTaxFilingFrequency")],
+          ["Sales Tax Submission Date", field("salesTaxSubmissionDate")],
+          ["E-File Sales Tax Added?", field("efileSalesTaxAdded")],
+          ["eFileSalesTax Registration Status", field("efileSalesTaxRegistrationStatus")],
+        ] as [string, string | undefined][])
+      : []),
+    ...(field("rtServiceEnabled") === "Yes"
+      ? ([
+          ["RT Account Number", field("rtAccountNumber")],
+          ["RT Filing Frequency", field("rtFilingFrequency")],
+          ["RT Submission Date", field("rtSubmissionDate")],
+        ] as [string, string | undefined][])
+      : []),
+    ...(field("payrollServiceEnabled") === "Yes"
+      ? ([
+          ["Payroll Setup Completion", field("surePayrollSetupCompletion")],
+          ["Payroll Filing Frequency", field("payrollFilingFrequency")],
+          ["Payroll Processing Date", field("payrollProcessingDate")],
+        ] as [string, string | undefined][])
+      : []),
   ];
 
   return (

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addTask } from "@/lib/tasks-actions";
 import { TaskRow, type TaskRecord, type TaskDocRecord } from "./task-row";
-import { TASK_TYPES, type TaskTypeKey } from "@/lib/tasks";
 import { EmptyState } from "./ui";
 
 type CompanyOption = { id: string; businessName: string; assignedTeamMember: { id: string; full_name: string } | null };
@@ -26,7 +25,6 @@ export function ClientTasksPanel({
 }) {
   const router = useRouter();
   const [scope, setScope] = useState<string>("client"); // "client" or a companyId
-  const [taskType, setTaskType] = useState<TaskTypeKey>("custom");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -54,8 +52,8 @@ export function ClientTasksPanel({
     const result = await addTask({
       companyId: isCompanyScope ? scope : undefined,
       profileId: isCompanyScope ? undefined : profileId,
-      taskType,
-      title: taskType === "ebt_application" ? "EBT Application" : description.slice(0, 60) || "Task",
+      taskType: "custom",
+      title: description.slice(0, 60) || "Task",
       description: description || undefined,
       assignedTo: effectiveAssignedTo || undefined,
       deadlineDate: deadline || undefined,
@@ -115,19 +113,6 @@ export function ClientTasksPanel({
           {companies.map((c) => (
             <option key={c.id} value={c.id}>
               {c.businessName}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={taskType}
-          onChange={(e) => setTaskType(e.target.value as TaskTypeKey)}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        >
-          <option value="custom">Custom task</option>
-          {scope !== "client" && TASK_TYPES.map((t) => (
-            <option key={t.key} value={t.key}>
-              {t.label}
             </option>
           ))}
         </select>

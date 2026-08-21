@@ -29,6 +29,16 @@ export const OPPORTUNITY_FIELDS = {
   mailingAddress: "1EyFMcLHH1WozOzU5cum",
   physicalAddress: "HywP1jrFgQ9ehKqTC7vt",
 
+  // Gate whether the Sales Tax/eFileSalesTax, Reemployment Tax, Payroll, and
+  // Bookkeeping sections show at all for this company, and whether the
+  // recurring cron jobs touch it - a company with a service disabled (or
+  // never configured) shows none of that service's fields and gets no
+  // reminders/resets for it.
+  salesTaxServiceEnabled: "R1d9A9PLHTYBX6JRokn6",
+  payrollServiceEnabled: "XTcs0UF7cK1pfNQLFF6C",
+  rtServiceEnabled: "3Oyl9Qsf56PZjy9Bkpuv",
+  bookkeepingServiceEnabled: "dN8LRoZx286xjJJlR18I",
+
   sunbizFilingConfirmation: "gMhB9YzSsTeqzsCUB2Dt", // deprecated - dropped from the portal, Tracking Number is the field of record
   sunbizTrackingNumber: "WTatASHPcFGXlMm8HHRA",
   sunbizFilingDate: "a78nLwymbfHD1hm0JMTK",

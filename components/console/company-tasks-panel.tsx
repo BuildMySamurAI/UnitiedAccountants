@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addTask } from "@/lib/tasks-actions";
 import { TaskRow, type TaskRecord, type TaskDocRecord } from "./task-row";
-import { TASK_TYPES, type TaskTypeKey } from "@/lib/tasks";
 import { EmptyState } from "./ui";
 
 // Lives on a specific company's own page - company_id comes from context, so
@@ -23,14 +22,12 @@ export function CompanyTasksPanel({
   assignedTeamMember: { id: string; full_name: string } | null;
 }) {
   const router = useRouter();
-  const [taskType, setTaskType] = useState<TaskTypeKey>(TASK_TYPES[0].key);
   const [description, setDescription] = useState("");
-  const [required, setRequired] = useState(true);
+  const [required, setRequired] = useState(false);
   const [deadline, setDeadline] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const typeLabel = TASK_TYPES.find((t) => t.key === taskType)?.label ?? "Task";
   const assignable = assignedTeamMember ? [assignedTeamMember] : [];
 
   async function handleAdd() {
@@ -38,8 +35,8 @@ export function CompanyTasksPanel({
     setError(null);
     const result = await addTask({
       companyId,
-      taskType,
-      title: typeLabel,
+      taskType: "custom",
+      title: description.slice(0, 60) || "Task",
       description: description || undefined,
       required,
       assignedTo: assignedTeamMember?.id,
@@ -70,18 +67,6 @@ export function CompanyTasksPanel({
       </div>
 
       <div style={{ padding: "12px 15px", borderTop: "1px solid var(--rule-soft)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <select
-          value={taskType}
-          onChange={(e) => setTaskType(e.target.value as TaskTypeKey)}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        >
-          {TASK_TYPES.map((t) => (
-            <option key={t.key} value={t.key}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-
         <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
           Required?
           <select

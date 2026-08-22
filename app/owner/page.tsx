@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS, PIPELINE_STAGES } from "@/lib/ghl/constants";
+import { parseDateOnly } from "@/lib/service-deadlines";
 import { ConsoleTopBar, StatCard, EmptyState } from "@/components/console/ui";
 
 export default async function TodayPage() {
@@ -78,6 +79,50 @@ export default async function TodayPage() {
     .order("created_at", { ascending: false });
   const multiEntity = (multiEntityProfiles ?? []).filter((p) => (p.companies?.length ?? 0) > 1);
 
+  // Practice-wide task view - every employee's tasks, not just this owner's
+  // own. Only due/overdue ones (no deadline = nothing to be "due" about).
+  const [{ data: openTasks }, { data: allProfiles }, { data: allTeamMembers }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, company_id, profile_id, title, assigned_to, deadline_date, status")
+      .neq("status", "Complete")
+      .not("deadline_date", "is", null)
+      .order("deadline_date", { ascending: true }),
+    supabase.from("profiles").select("id, first_name, last_name"),
+    supabase.from("team_members").select("id, full_name"),
+  ]);
+
+  const companyMap = new Map(
+    list.map((c) => [c.id, { businessName: c.business_name, profileId: c.profile_id, profile: c.profiles as unknown as { first_name: string; last_name: string } | null }])
+  );
+  const profileNameMap = new Map((allProfiles ?? []).map((p) => [p.id, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Unnamed client"]));
+  const teamMemberNameMap = new Map((allTeamMembers ?? []).map((t) => [t.id, t.full_name]));
+
+  const todayLocal = new Date();
+  todayLocal.setHours(0, 0, 0, 0);
+
+  const dueOrOverdueTasks = (openTasks ?? [])
+    .map((t) => ({ ...t, deadline: parseDateOnly(t.deadline_date!) }))
+    .filter((t) => t.deadline.getTime() <= todayLocal.getTime());
+  const overdueTasksCount = dueOrOverdueTasks.filter((t) => t.deadline.getTime() < todayLocal.getTime()).length;
+  const dueTodayCount = dueOrOverdueTasks.length - overdueTasksCount;
+
+  function taskContext(t: (typeof dueOrOverdueTasks)[number]) {
+    if (t.company_id) {
+      const c = companyMap.get(t.company_id);
+      return {
+        label: c?.businessName || "Unnamed company",
+        client: c?.profile ? `${c.profile.first_name} ${c.profile.last_name}`.trim() : "",
+        href: c ? `/owner/contacts/${c.profileId}/${t.company_id}` : "/owner/contacts",
+      };
+    }
+    return {
+      label: profileNameMap.get(t.profile_id!) ?? "Unknown client",
+      client: "",
+      href: `/owner/contacts/${t.profile_id}`,
+    };
+  }
+
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   return (
@@ -94,6 +139,8 @@ export default async function TodayPage() {
           <StatCard k="Companies in progress" v={inProgress} d={inProgress > 0 ? <em>not yet Active Client</em> : undefined} />
           <StatCard k="Awaiting statements" v={awaitingStatements} d={awaitingStatements > 0 ? <em className="warn">bookkeeping cycle open</em> : undefined} />
           <StatCard k="Unassigned companies" v={unassigned} d={unassigned > 0 ? <em className="warn">no team member yet</em> : undefined} />
+          <StatCard k="Overdue tasks" v={overdueTasksCount} d={overdueTasksCount > 0 ? <em className="warn">across all employees</em> : undefined} />
+          <StatCard k="Tasks due today" v={dueTodayCount} />
         </div>
 
         <div className="detail">
@@ -116,6 +163,32 @@ export default async function TodayPage() {
                   </Link>
                 </div>
               ))}
+            </div>
+
+            <div className="ccard" style={{ marginBottom: 16 }}>
+              <header>
+                <h3>Tasks due</h3>
+                <span className="hint">{dueOrOverdueTasks.length} due or overdue - all employees</span>
+              </header>
+              {dueOrOverdueTasks.length === 0 && <EmptyState title="Nothing due" subtitle="No tasks are due or overdue across the practice." />}
+              {dueOrOverdueTasks.map((t) => {
+                const ctx = taskContext(t);
+                const overdue = t.deadline.getTime() < todayLocal.getTime();
+                return (
+                  <Link key={t.id} href={ctx.href} className="rl click" style={{ color: "inherit" }}>
+                    <span className={`b ${overdue ? "r" : "a"}`} />
+                    <div>
+                      <div className="x">
+                        <b>{t.title}</b> - {ctx.label}
+                        {ctx.client && ` (${ctx.client})`}
+                      </div>
+                      <div className="y">
+                        {t.assigned_to ? teamMemberNameMap.get(t.assigned_to) ?? "Unknown team member" : "Unassigned"} - {overdue ? "Overdue" : "Due today"} - {t.deadline.toLocaleDateString()}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
 
             <div className="ccard">

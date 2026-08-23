@@ -12,6 +12,7 @@ import { ClientServices } from "./client-services";
 import type { ServiceDocRecord } from "@/app/staff/[profileId]/[companyId]/service-row";
 import { GoingOutOfBusinessToggle } from "@/components/console/going-out-of-business-toggle";
 import { ClientClosingTasks } from "@/components/console/client-closing-tasks";
+import { OwnerInformationCard } from "@/components/console/contact-info-panel";
 
 export default async function CompanyPage({
   params,
@@ -32,6 +33,12 @@ export default async function CompanyPage({
     .single();
 
   if (!company) notFound();
+
+  const { data: myProfile } = await supabase
+    .from("profiles")
+    .select("owner_legal_name, owner_ssn, owner_date_of_birth, owner_address")
+    .eq("id", user!.id)
+    .single();
 
   // Read live from GHL - staff update these fields directly in GHL and we
   // don't yet have a reverse-sync webhook, so the Supabase cache for
@@ -120,7 +127,6 @@ export default async function CompanyPage({
   const facts: [string, string | undefined][] = [
     ["Sunbiz Tracking Number", field("sunbizTrackingNumber")],
     ["Sunbiz Filing Date", field("sunbizFilingDate")],
-    ["EIN", field("ein")],
     ...(field("salesTaxServiceEnabled") === "Yes"
       ? ([
           ["Sales Tax Certificate Number", field("salesTaxCertificateNumber")],
@@ -194,6 +200,7 @@ export default async function CompanyPage({
               <AutoSaveField companyId={company.id} fieldKey="businessName" label="Legal business name" initialValue={businessName ?? ""} />
               <AutoSaveField companyId={company.id} fieldKey="mailingAddress" label="Mailing address" initialValue={mailingAddress} />
               <AutoSaveField companyId={company.id} fieldKey="physicalAddress" label="Physical address" initialValue={physicalAddress} />
+              <AutoSaveField companyId={company.id} fieldKey="ein" label="EIN" initialValue={field("ein") ?? ""} />
             </div>
 
             <div className="ccard" style={{ marginBottom: 16 }}>
@@ -217,6 +224,8 @@ export default async function CompanyPage({
                 </div>
               )}
             </div>
+
+            {myProfile && <OwnerInformationCard profileId={user!.id} profile={myProfile} />}
 
             <ClientServices services={services ?? []} documentsByService={documentsByService} />
 

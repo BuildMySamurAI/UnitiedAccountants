@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/components/console/ui";
+import { AddClientForm } from "./add-client-form";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -140,6 +141,10 @@ export default async function ContactsPage({
           {profiles?.length ?? 0} clients synced from the portal. Search matches name, email, business name, EIN, or
           manager name/SSN.
         </p>
+
+        <div style={{ marginBottom: 16 }}>
+          <AddClientForm />
+        </div>
 
         <div className="ccard">
           <header>

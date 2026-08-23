@@ -75,6 +75,19 @@ export async function updateContactCustomFields(
   });
 }
 
+// Mirrors an edit to a contact's own name/email/phone (made from the portal)
+// back onto the GHL contact record - keeps the CRM in sync the same way
+// updateOpportunityCustomFields does for company fields.
+export async function updateContactFields(
+  contactId: string,
+  fields: { firstName?: string; lastName?: string; email?: string; phone?: string }
+) {
+  return ghlFetch(`/contacts/${contactId}`, {
+    method: "PUT",
+    body: JSON.stringify(fields),
+  });
+}
+
 export async function createOpportunity(input: {
   contactId: string;
   name: string;

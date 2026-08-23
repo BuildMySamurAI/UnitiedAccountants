@@ -8,6 +8,7 @@ import { CommunicationPanel } from "@/components/console/communication-panel";
 import { ClientTasksPanel } from "@/components/console/client-tasks-panel";
 import type { TaskRecord, TaskDocRecord } from "@/components/console/task-row";
 import { ClientStatusToggle } from "@/components/console/client-status-toggle";
+import { ContactInfoPanel } from "@/components/console/contact-info-panel";
 import { AssignSelect } from "../../assign-select";
 import { TagsCard } from "./tags-card";
 import { DeleteContactButton } from "./delete-contact-button";
@@ -27,7 +28,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, email, phone, ghl_contact_id, created_at, status")
+    .select("id, first_name, last_name, email, phone, ghl_contact_id, created_at, status, owner_legal_name, owner_ssn, owner_date_of_birth, owner_address")
     .eq("id", profileId)
     .single();
 
@@ -164,6 +165,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               documentsByTask={documentsByTask}
             />
           }
+          infoPanel={<ContactInfoPanel profileId={profileId} profile={profile} />}
         />
       </div>
     </>

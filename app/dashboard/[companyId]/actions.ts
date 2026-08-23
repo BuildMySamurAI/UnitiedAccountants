@@ -18,6 +18,7 @@ const EDITABLE_FIELD_MAP = {
   businessName: { ghlFieldId: OPPORTUNITY_FIELDS.businessName, column: "business_name" },
   mailingAddress: { ghlFieldId: OPPORTUNITY_FIELDS.mailingAddress, column: "mailing_address" },
   physicalAddress: { ghlFieldId: OPPORTUNITY_FIELDS.physicalAddress, column: "physical_address" },
+  ein: { ghlFieldId: OPPORTUNITY_FIELDS.ein, column: "ein" },
 } as const;
 
 export type EditableFieldKey = keyof typeof EDITABLE_FIELD_MAP;

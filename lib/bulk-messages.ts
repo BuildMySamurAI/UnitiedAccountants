@@ -34,7 +34,11 @@ export async function getBulkMessageRecipients(supabase: SupabaseClient): Promis
 
   // Which of the 4 GHL-field services each company actually has active -
   // read live, not from the Supabase mirror, per "use current service
-  // selection/status data". A company that errors (e.g. deleted in GHL but
+  // selection/status data". Driven by the same *ServiceEnabled toggles that
+  // gate whether each section even shows up on the company page - a service
+  // that's been turned off shouldn't still pull that client into a bulk
+  // send just because old filing-frequency data is still sitting there from
+  // before it was disabled. A company that errors (e.g. deleted in GHL but
   // not yet synced) just contributes no service tags rather than failing
   // the whole audience build.
   const companyServiceTags = await Promise.all(
@@ -43,10 +47,10 @@ export async function getBulkMessageRecipients(supabase: SupabaseClient): Promis
         const opportunity = await getOpportunity(c.ghl_opportunity_id);
         const cf = opportunity.customFields;
         const tags: GhlFieldServiceFilterKey[] = [];
-        if (customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxFilingFrequency)) tags.push("sales_tax");
-        if (customFieldValue(cf, OPPORTUNITY_FIELDS.payrollFilingFrequency)) tags.push("payroll");
-        if (customFieldValue(cf, OPPORTUNITY_FIELDS.rtFilingFrequency)) tags.push("reemployment_tax");
-        if (customFieldValue(cf, OPPORTUNITY_FIELDS.bookkeepingStatus)) tags.push("bookkeeping");
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxServiceEnabled) === "Yes") tags.push("sales_tax");
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.payrollServiceEnabled) === "Yes") tags.push("payroll");
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.rtServiceEnabled) === "Yes") tags.push("reemployment_tax");
+        if (customFieldValue(cf, OPPORTUNITY_FIELDS.bookkeepingServiceEnabled) === "Yes") tags.push("bookkeeping");
         return { companyId: c.id, tags };
       } catch {
         return { companyId: c.id, tags: [] };

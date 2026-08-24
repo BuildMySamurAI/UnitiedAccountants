@@ -11,10 +11,12 @@ export function CompanyNotesPanel({
   companyId,
   notes,
   teamMembers,
+  canManage,
 }: {
   companyId: string;
   notes: NoteRecord[];
   teamMembers: { id: string; full_name: string }[];
+  canManage: boolean;
 }) {
   const router = useRouter();
   const [outcome, setOutcome] = useState("");
@@ -49,7 +51,7 @@ export function CompanyNotesPanel({
       <div style={{ padding: "12px 15px" }}>
         {sorted.length === 0 && <EmptyState title="No notes yet" subtitle="Log calls, emails, and other client contact here." />}
         {sorted.map((n) => (
-          <NoteRow key={n.id} note={n} teamMembers={teamMembers} />
+          <NoteRow key={n.id} note={n} teamMembers={teamMembers} canManage={canManage} />
         ))}
       </div>
 

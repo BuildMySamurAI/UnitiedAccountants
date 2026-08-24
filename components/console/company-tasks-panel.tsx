@@ -6,23 +6,24 @@ import { addTask } from "@/lib/tasks-actions";
 import { TaskRow, type TaskRecord, type TaskDocRecord } from "./task-row";
 import { EmptyState } from "./ui";
 
-// Lives on a specific company's own page - company_id comes from context, so
-// there's no scope picker here. Any task can go to any team member (tasks
-// are assigned individually, by who actually handles that piece of work -
-// not locked to whoever the whole client account happens to be assigned
-// to). The company's own assigned team member is just the default pick.
+// Lives on a specific company's own page. Only the owner creates tasks or
+// reassigns them (canManage=false hides the add-form and locks assignee/
+// deadline on every row) - staff just see what they're on the hook for and
+// update status as they work it.
 export function CompanyTasksPanel({
   companyId,
   tasks,
   documentsByTask,
   teamMembers,
   assignedTeamMember,
+  canManage,
 }: {
   companyId: string;
   tasks: TaskRecord[];
   documentsByTask: Record<string, TaskDocRecord[]>;
   teamMembers: { id: string; full_name: string }[];
   assignedTeamMember: { id: string; full_name: string } | null;
+  canManage: boolean;
 }) {
   const router = useRouter();
   const [description, setDescription] = useState("");
@@ -64,55 +65,57 @@ export function CompanyTasksPanel({
       <div style={{ padding: "12px 15px" }}>
         {tasks.length === 0 && <EmptyState title="No tasks tracked yet" />}
         {tasks.map((t) => (
-          <TaskRow key={t.id} task={t} documents={documentsByTask[t.id] ?? []} assignableTeamMembers={teamMembers} />
+          <TaskRow key={t.id} task={t} documents={documentsByTask[t.id] ?? []} assignableTeamMembers={teamMembers} canManage={canManage} />
         ))}
       </div>
 
-      <div style={{ padding: "12px 15px", borderTop: "1px solid var(--rule-soft)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-          Required?
+      {canManage && (
+        <div style={{ padding: "12px 15px", borderTop: "1px solid var(--rule-soft)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+            Required?
+            <select
+              value={required ? "Yes" : "No"}
+              onChange={(e) => setRequired(e.target.value === "Yes")}
+              style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+            >
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </label>
+
+          <input
+            type="text"
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={{ flex: "1 1 160px", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
+
           <select
-            value={required ? "Yes" : "No"}
-            onChange={(e) => setRequired(e.target.value === "Yes")}
+            value={assignedTo}
+            onChange={(e) => setAssignedTo(e.target.value)}
             style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
           >
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
+            <option value="">Unassigned</option>
+            {teamMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name}
+              </option>
+            ))}
           </select>
-        </label>
 
-        <input
-          type="text"
-          placeholder="Description (optional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          style={{ flex: "1 1 160px", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        />
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
 
-        <select
-          value={assignedTo}
-          onChange={(e) => setAssignedTo(e.target.value)}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        >
-          <option value="">Unassigned</option>
-          {teamMembers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.full_name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="date"
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        />
-
-        <button onClick={handleAdd} disabled={adding} className="cbtn">
-          {adding ? "Adding..." : "+ Add task"}
-        </button>
-      </div>
+          <button onClick={handleAdd} disabled={adding} className="cbtn">
+            {adding ? "Adding..." : "+ Add task"}
+          </button>
+        </div>
+      )}
       {error && <p style={{ fontSize: 11.5, color: "var(--red)", padding: "0 15px 10px" }}>{error}</p>}
     </div>
   );

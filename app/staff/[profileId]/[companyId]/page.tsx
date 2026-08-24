@@ -99,6 +99,7 @@ export default async function StaffCompanyPage({
     .from("tasks")
     .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
     .eq("company_id", companyId)
+    .eq("approval_status", "approved")
     .order("created_at", { ascending: true });
 
   const taskIds = (tasks ?? []).map((t) => t.id);
@@ -244,9 +245,10 @@ export default async function StaffCompanyPage({
           documentsByTask={documentsByTask}
           teamMembers={teamMembers ?? []}
           assignedTeamMember={assignedTeamMemberForCompany}
+          canManage={false}
         />
 
-        <CompanyNotesPanel companyId={companyId} notes={notes ?? []} teamMembers={teamMembers ?? []} />
+        <CompanyNotesPanel companyId={companyId} notes={notes ?? []} teamMembers={teamMembers ?? []} canManage={false} />
 
         {bookkeepingCycleOpen && (
           <div className="ccard" style={{ marginBottom: 16 }}>

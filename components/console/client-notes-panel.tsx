@@ -14,11 +14,13 @@ export function ClientNotesPanel({
   companies,
   notes,
   teamMembers,
+  canManage,
 }: {
   profileId: string;
   companies: CompanyOption[];
   notes: NoteRecord[];
   teamMembers: { id: string; full_name: string }[];
+  canManage: boolean;
 }) {
   const router = useRouter();
   const [scope, setScope] = useState<string>("client"); // "client" or a companyId
@@ -69,7 +71,7 @@ export function ClientNotesPanel({
             <span className="y" style={{ display: "block", marginBottom: 2 }}>
               {scopeLabelFor(n)}
             </span>
-            <NoteRow note={n} teamMembers={teamMembers} />
+            <NoteRow note={n} teamMembers={teamMembers} canManage={canManage} />
           </div>
         ))}
       </div>

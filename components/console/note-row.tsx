@@ -9,9 +9,11 @@ import { Pill } from "./ui";
 export function NoteRow({
   note,
   teamMembers,
+  canManage,
 }: {
   note: NoteRecord;
   teamMembers: { id: string; full_name: string }[];
+  canManage: boolean;
 }) {
   const router = useRouter();
   const [followUpOpen, setFollowUpOpen] = useState(false);
@@ -56,7 +58,7 @@ export function NoteRow({
           <div style={{ fontSize: 13 }}>{note.body}</div>
         </div>
 
-        {!done && (
+        {canManage && !done && (
           <button className="cbtn ghost" style={{ fontSize: 11, padding: "5px 10px" }} onClick={() => setFollowUpOpen((v) => !v)}>
             {followUpOpen ? "Cancel" : "+ Follow-up task"}
           </button>
@@ -64,7 +66,7 @@ export function NoteRow({
         {done && <Pill variant="g">Follow-up task created</Pill>}
       </div>
 
-      {followUpOpen && !done && (
+      {canManage && followUpOpen && !done && (
         <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <input
             type="text"

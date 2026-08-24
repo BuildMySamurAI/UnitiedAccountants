@@ -39,19 +39,12 @@ export default async function DashboardPage() {
     .select("id, business_name, pipeline_stage, created_at, assigned_team_member_id")
     .order("created_at", { ascending: true });
 
-  let assignableTeamMembers: { id: string; full_name: string }[] = [];
-  let myTasks: { id: string; description: string | null; status: string; deadline_date: string | null }[] = [];
+  let myTasks: { id: string; description: string | null; status: string; deadline_date: string | null; approval_status: string }[] = [];
 
   if (profile) {
-    const assignedIds = [...new Set((companies ?? []).map((c) => c.assigned_team_member_id).filter((id): id is string => Boolean(id)))];
-    if (assignedIds.length > 0) {
-      const { data: teamMembers } = await supabase.from("team_members").select("id, full_name").in("id", assignedIds);
-      assignableTeamMembers = teamMembers ?? [];
-    }
-
     const { data: tasks } = await supabase
       .from("tasks")
-      .select("id, description, status, deadline_date")
+      .select("id, description, status, deadline_date, approval_status")
       .eq("profile_id", user!.id)
       .order("created_at", { ascending: false });
     myTasks = tasks ?? [];
@@ -106,11 +99,15 @@ export default async function DashboardPage() {
                   </div>
                 </div>
                 <span style={{ marginLeft: "auto" }}>
-                  <Pill variant={t.status === "Complete" ? "g" : t.status === "In Progress" ? "a" : "n"}>{t.status}</Pill>
+                  {t.approval_status === "pending" && <Pill variant="b">Pending review</Pill>}
+                  {t.approval_status === "rejected" && <Pill variant="n">Declined</Pill>}
+                  {t.approval_status === "approved" && (
+                    <Pill variant={t.status === "Complete" ? "g" : t.status === "In Progress" ? "a" : "n"}>{t.status}</Pill>
+                  )}
                 </span>
               </div>
             ))}
-            <ClientTaskForm profileId={user!.id} assignableTeamMembers={assignableTeamMembers} />
+            <ClientTaskForm profileId={user!.id} />
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS, PIPELINE_STAGES } from "@/lib/ghl/constants";
 import { parseDateOnly } from "@/lib/service-deadlines";
 import { ConsoleTopBar, StatCard, EmptyState } from "@/components/console/ui";
+import { ClientRequestsPanel, type ClientRequest } from "@/components/console/client-requests-panel";
 
 export default async function TodayPage() {
   const supabase = await supabaseServer();
@@ -81,15 +82,21 @@ export default async function TodayPage() {
 
   // Practice-wide task view - every employee's tasks, not just this owner's
   // own. Only due/overdue ones (no deadline = nothing to be "due" about).
-  const [{ data: openTasks }, { data: allProfiles }, { data: allTeamMembers }] = await Promise.all([
+  const [{ data: openTasks }, { data: allProfiles }, { data: allTeamMembers }, { data: pendingRequests }] = await Promise.all([
     supabase
       .from("tasks")
       .select("id, company_id, profile_id, title, assigned_to, deadline_date, status")
+      .eq("approval_status", "approved")
       .neq("status", "Complete")
       .not("deadline_date", "is", null)
       .order("deadline_date", { ascending: true }),
     supabase.from("profiles").select("id, first_name, last_name"),
     supabase.from("team_members").select("id, full_name"),
+    supabase
+      .from("tasks")
+      .select("id, profile_id, title, description, deadline_date, created_at")
+      .eq("approval_status", "pending")
+      .order("created_at", { ascending: true }),
   ]);
 
   const companyMap = new Map(
@@ -97,6 +104,16 @@ export default async function TodayPage() {
   );
   const profileNameMap = new Map((allProfiles ?? []).map((p) => [p.id, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Unnamed client"]));
   const teamMemberNameMap = new Map((allTeamMembers ?? []).map((t) => [t.id, t.full_name]));
+
+  const clientRequests: ClientRequest[] = (pendingRequests ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    deadlineDate: r.deadline_date,
+    createdAt: r.created_at,
+    clientName: profileNameMap.get(r.profile_id!) ?? "Unknown client",
+    href: `/owner/contacts/${r.profile_id}`,
+  }));
 
   const todayLocal = new Date();
   todayLocal.setHours(0, 0, 0, 0);
@@ -141,6 +158,7 @@ export default async function TodayPage() {
           <StatCard k="Unassigned companies" v={unassigned} d={unassigned > 0 ? <em className="warn">no team member yet</em> : undefined} />
           <StatCard k="Overdue tasks" v={overdueTasksCount} d={overdueTasksCount > 0 ? <em className="warn">across all employees</em> : undefined} />
           <StatCard k="Tasks due today" v={dueTodayCount} />
+          <StatCard k="Client requests" v={clientRequests.length} d={clientRequests.length > 0 ? <em className="warn">awaiting review</em> : undefined} />
         </div>
 
         <div className="detail">
@@ -164,6 +182,8 @@ export default async function TodayPage() {
                 </div>
               ))}
             </div>
+
+            <ClientRequestsPanel requests={clientRequests} teamMembers={allTeamMembers ?? []} />
 
             <div className="ccard" style={{ marginBottom: 16 }}>
               <header>

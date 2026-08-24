@@ -79,6 +79,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     .from("tasks")
     .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
     .or(`profile_id.eq.${profileId}${companyIds.length > 0 ? `,company_id.in.(${companyIds.join(",")})` : ""}`)
+    .eq("approval_status", "approved")
     .order("created_at", { ascending: true });
 
   const taskIds = (tasks ?? []).map((t) => t.id);
@@ -172,10 +173,11 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               tasks={(tasks ?? []) as TaskRecord[]}
               documentsByTask={documentsByTask}
               teamMembers={teamMembers ?? []}
+              canManage
             />
           }
           notesPanel={
-            <ClientNotesPanel profileId={profileId} companies={taskCompanies} notes={notes ?? []} teamMembers={teamMembers ?? []} />
+            <ClientNotesPanel profileId={profileId} companies={taskCompanies} notes={notes ?? []} teamMembers={teamMembers ?? []} canManage />
           }
           infoPanel={<ContactInfoPanel profileId={profileId} profile={profile} />}
         />

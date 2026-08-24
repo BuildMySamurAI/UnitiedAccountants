@@ -24,20 +24,22 @@ export type TaskRecord = {
 
 export type TaskDocRecord = { id: string; task_id: string; file_name: string; storage_path: string };
 
-// `assignableTeamMembers` is pre-constrained by the caller to whoever's
-// actually assigned to this task's company (or companies, for a client-level
-// task) - never the full team roster, per the "assignment always follows
-// who already serves this client" rule.
+// `canManage` gates reassignment and deadline changes - owner-only, per the
+// "only the owner creates and assigns tasks" rule. Everyone who can see a
+// task (owner or the staff member it's assigned to) can still update its
+// status - that's just doing the work, not managing who does it.
 export function TaskRow({
   task,
   documents,
   assignableTeamMembers,
   scopeLabel,
+  canManage,
 }: {
   task: TaskRecord;
   documents: TaskDocRecord[];
   assignableTeamMembers: { id: string; full_name: string }[];
   scopeLabel?: string;
+  canManage: boolean;
 }) {
   const router = useRouter();
   const [deadline, setDeadline] = useState(task.deadline_date ?? "");
@@ -57,6 +59,8 @@ export function TaskRow({
     Complete: "g",
   };
 
+  const assigneeName = assignableTeamMembers.find((m) => m.id === task.assigned_to)?.full_name;
+
   return (
     <div style={{ borderBottom: "1px solid var(--rule-soft)", padding: "12px 0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -69,27 +73,35 @@ export function TaskRow({
         {task.required !== null && <Pill variant={task.required ? "a" : "n"}>{task.required ? "Required" : "Not required"}</Pill>}
         <Pill variant={task.created_by === "client" ? "b" : "n"}>{task.created_by === "client" ? "From client" : "Staff added"}</Pill>
 
-        <select
-          value={task.assigned_to ?? ""}
-          onChange={(e) => save({ assignedTo: e.target.value || null })}
-          disabled={saving}
-          style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        >
-          <option value="">Unassigned</option>
-          {assignableTeamMembers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.full_name}
-            </option>
-          ))}
-        </select>
+        {canManage ? (
+          <select
+            value={task.assigned_to ?? ""}
+            onChange={(e) => save({ assignedTo: e.target.value || null })}
+            disabled={saving}
+            style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          >
+            <option value="">Unassigned</option>
+            {assignableTeamMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="y">{assigneeName ?? "Unassigned"}</span>
+        )}
 
-        <input
-          type="date"
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          onBlur={() => save({ deadlineDate: deadline })}
-          style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        />
+        {canManage ? (
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            onBlur={() => save({ deadlineDate: deadline })}
+            style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
+        ) : (
+          task.deadline_date && <span className="y">Due {parseDateOnly(task.deadline_date).toLocaleDateString()}</span>
+        )}
 
         <select
           value={task.status}

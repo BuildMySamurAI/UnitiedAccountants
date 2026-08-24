@@ -8,23 +8,24 @@ import { EmptyState } from "./ui";
 
 type CompanyOption = { id: string; businessName: string; assignedTeamMember: { id: string; full_name: string } | null };
 
-// Lives on a client's Contact page (both Owner and Team portals). Staff
-// picks scope first - client-level, or one of this client's companies -
-// then can assign the task to any team member, not just whoever the scoped
-// company happens to be assigned to; that company's assigned member is
-// only offered as the default pick.
+// Lives on a client's Contact page (both Owner and Team portals), but the
+// add-task form and scope picker only render for the owner (canManage) -
+// staff see a read-only list of what's been assigned to them across this
+// client's companies.
 export function ClientTasksPanel({
   profileId,
   companies,
   tasks,
   documentsByTask,
   teamMembers,
+  canManage,
 }: {
   profileId: string;
   companies: CompanyOption[];
   tasks: TaskRecord[];
   documentsByTask: Record<string, TaskDocRecord[]>;
   teamMembers: { id: string; full_name: string }[];
+  canManage: boolean;
 }) {
   const router = useRouter();
   const [scope, setScope] = useState<string>("client"); // "client" or a companyId
@@ -82,59 +83,62 @@ export function ClientTasksPanel({
             documents={documentsByTask[t.id] ?? []}
             assignableTeamMembers={teamMembers}
             scopeLabel={scopeLabelFor(t)}
+            canManage={canManage}
           />
         ))}
       </div>
 
-      <div style={{ padding: "12px 15px", borderTop: "1px solid var(--rule-soft)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <select
-          value={scope}
-          onChange={(e) => {
-            setScope(e.target.value);
-            setAssignedTo("");
-          }}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        >
-          <option value="client">For the client</option>
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.businessName}
-            </option>
-          ))}
-        </select>
+      {canManage && (
+        <div style={{ padding: "12px 15px", borderTop: "1px solid var(--rule-soft)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <select
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value);
+              setAssignedTo("");
+            }}
+            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          >
+            <option value="client">For the client</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.businessName}
+              </option>
+            ))}
+          </select>
 
-        <input
-          type="text"
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          style={{ flex: "1 1 160px", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        />
+          <input
+            type="text"
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={{ flex: "1 1 160px", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
 
-        <select
-          value={effectiveAssignedTo}
-          onChange={(e) => setAssignedTo(e.target.value)}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        >
-          <option value="">Unassigned</option>
-          {teamMembers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.full_name}
-            </option>
-          ))}
-        </select>
+          <select
+            value={effectiveAssignedTo}
+            onChange={(e) => setAssignedTo(e.target.value)}
+            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          >
+            <option value="">Unassigned</option>
+            {teamMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name}
+              </option>
+            ))}
+          </select>
 
-        <input
-          type="date"
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-        />
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
 
-        <button onClick={handleAdd} disabled={adding} className="cbtn">
-          {adding ? "Adding..." : "+ Add task"}
-        </button>
-      </div>
+          <button onClick={handleAdd} disabled={adding} className="cbtn">
+            {adding ? "Adding..." : "+ Add task"}
+          </button>
+        </div>
+      )}
       {error && <p style={{ fontSize: 11.5, color: "var(--red)", padding: "0 15px 10px" }}>{error}</p>}
     </div>
   );

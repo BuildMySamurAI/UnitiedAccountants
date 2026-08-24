@@ -1,9 +1,14 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase/server";
-import type { ServiceTypeKey } from "@/lib/services";
+import { SERVICE_TYPE_LABEL, type ServiceTypeKey } from "@/lib/services";
+import { syncRenewalReminderTask } from "@/lib/service-renewal-tasks";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+function labelFor(serviceType: ServiceTypeKey, subtype: string | null): string {
+  return subtype ? `${SERVICE_TYPE_LABEL[serviceType]} - ${subtype}` : SERVICE_TYPE_LABEL[serviceType];
+}
 
 export async function addCompanyService(input: {
   companyId: string;
@@ -14,15 +19,29 @@ export async function addCompanyService(input: {
 }): Promise<ActionResult> {
   const supabase = await supabaseServer();
 
-  const { error } = await supabase.from("company_services").insert({
-    company_id: input.companyId,
-    service_type: input.serviceType,
-    subtype: input.subtype || null,
-    license_number: input.licenseNumber || null,
-    deadline_date: input.deadlineDate || null,
-  });
+  const { data, error } = await supabase
+    .from("company_services")
+    .insert({
+      company_id: input.companyId,
+      service_type: input.serviceType,
+      subtype: input.subtype || null,
+      license_number: input.licenseNumber || null,
+      deadline_date: input.deadlineDate || null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { ok: false, error: error.message };
+
+  if (input.deadlineDate) {
+    await syncRenewalReminderTask(supabase, {
+      serviceId: data.id,
+      companyId: input.companyId,
+      label: labelFor(input.serviceType, input.subtype ?? null),
+      deadlineDate: input.deadlineDate,
+    });
+  }
+
   return { ok: true };
 }
 
@@ -40,6 +59,24 @@ export async function updateCompanyService(
   const { error } = await supabase.from("company_services").update(update).eq("id", serviceId);
 
   if (error) return { ok: false, error: error.message };
+
+  if (fields.deadlineDate) {
+    const { data: service } = await supabase
+      .from("company_services")
+      .select("company_id, service_type, subtype")
+      .eq("id", serviceId)
+      .single();
+
+    if (service) {
+      await syncRenewalReminderTask(supabase, {
+        serviceId,
+        companyId: service.company_id,
+        label: labelFor(service.service_type as ServiceTypeKey, service.subtype),
+        deadlineDate: fields.deadlineDate,
+      });
+    }
+  }
+
   return { ok: true };
 }
 

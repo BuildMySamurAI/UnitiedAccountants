@@ -12,6 +12,7 @@ import { ServicesPanel } from "@/app/staff/[profileId]/[companyId]/services-pane
 import type { ServiceDocRecord } from "@/app/staff/[profileId]/[companyId]/service-row";
 import { ManagersPanel, type ManagerRecord } from "@/app/staff/[profileId]/[companyId]/managers-panel";
 import { CompanyTasksPanel } from "@/components/console/company-tasks-panel";
+import { CompanyNotesPanel } from "@/components/console/company-notes-panel";
 import { GoingOutOfBusinessToggle } from "@/components/console/going-out-of-business-toggle";
 import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
@@ -111,6 +112,12 @@ export default async function CompanyDetailPage({
   }
 
   const assignedTeamMemberForCompany = (teamMembers ?? []).find((m) => m.id === company.assigned_team_member_id) ?? null;
+
+  const { data: notes } = await supabase
+    .from("notes")
+    .select("id, company_id, profile_id, outcome, body, created_by_name, created_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
 
   const { data: siblingCompanies } = await supabase
     .from("companies")
@@ -224,7 +231,15 @@ export default async function CompanyDetailPage({
 
         <GoingOutOfBusinessToggle companyId={companyId} initialValue={company.going_out_of_business ?? "No"} createdBy="team" />
 
-        <CompanyTasksPanel companyId={companyId} tasks={tasks ?? []} documentsByTask={documentsByTask} assignedTeamMember={assignedTeamMemberForCompany} />
+        <CompanyTasksPanel
+          companyId={companyId}
+          tasks={tasks ?? []}
+          documentsByTask={documentsByTask}
+          teamMembers={teamMembers ?? []}
+          assignedTeamMember={assignedTeamMemberForCompany}
+        />
+
+        <CompanyNotesPanel companyId={companyId} notes={notes ?? []} teamMembers={teamMembers ?? []} />
 
         {bookkeepingCycleOpen && (
           <div className="ccard" style={{ marginBottom: 16 }}>

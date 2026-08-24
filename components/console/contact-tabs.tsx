@@ -6,20 +6,24 @@ export function ContactTabs({
   companiesCount,
   messagesCount,
   tasksCount,
+  notesCount,
   companiesPanel,
   communicationPanel,
   tasksPanel,
   infoPanel,
+  notesPanel,
 }: {
   companiesCount: number;
   messagesCount: number;
   tasksCount?: number;
+  notesCount?: number;
   companiesPanel: React.ReactNode;
   communicationPanel: React.ReactNode;
   tasksPanel?: React.ReactNode;
   infoPanel?: React.ReactNode;
+  notesPanel?: React.ReactNode;
 }) {
-  const [tab, setTab] = useState<"companies" | "comm" | "tasks" | "info">("companies");
+  const [tab, setTab] = useState<"companies" | "comm" | "tasks" | "info" | "notes">("companies");
 
   return (
     <>
@@ -35,6 +39,11 @@ export function ContactTabs({
             Tasks <span className="n">{tasksCount ?? 0}</span>
           </button>
         )}
+        {notesPanel && (
+          <button className={`ctab ${tab === "notes" ? "on" : ""}`} onClick={() => setTab("notes")}>
+            Notes <span className="n">{notesCount ?? 0}</span>
+          </button>
+        )}
         {infoPanel && (
           <button className={`ctab ${tab === "info" ? "on" : ""}`} onClick={() => setTab("info")}>
             Info
@@ -44,6 +53,7 @@ export function ContactTabs({
       <div style={{ display: tab === "companies" ? "block" : "none" }}>{companiesPanel}</div>
       <div style={{ display: tab === "comm" ? "block" : "none" }}>{communicationPanel}</div>
       {tasksPanel && <div style={{ display: tab === "tasks" ? "block" : "none" }}>{tasksPanel}</div>}
+      {notesPanel && <div style={{ display: tab === "notes" ? "block" : "none" }}>{notesPanel}</div>}
       {infoPanel && <div style={{ display: tab === "info" ? "block" : "none" }}>{infoPanel}</div>}
     </>
   );

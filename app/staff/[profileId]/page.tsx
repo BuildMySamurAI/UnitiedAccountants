@@ -6,6 +6,7 @@ import { ConsoleTopBar, Avatar, MultiEntityBadge, Pill, EmptyState } from "@/com
 import { ContactTabs } from "@/components/console/contact-tabs";
 import { CommunicationPanel } from "@/components/console/communication-panel";
 import { ClientTasksPanel } from "@/components/console/client-tasks-panel";
+import { ClientNotesPanel } from "@/components/console/client-notes-panel";
 import type { TaskRecord, TaskDocRecord } from "@/components/console/task-row";
 import { ClientStatusToggle } from "@/components/console/client-status-toggle";
 import { ContactInfoPanel } from "@/components/console/contact-info-panel";
@@ -84,6 +85,12 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
     (documentsByTask[d.task_id] ??= []).push(d);
   }
 
+  const { data: notes } = await supabase
+    .from("notes")
+    .select("id, company_id, profile_id, outcome, body, created_by_name, created_at")
+    .or(`profile_id.eq.${profileId}${companyIds.length > 0 ? `,company_id.in.(${companyIds.join(",")})` : ""}`)
+    .order("created_at", { ascending: false });
+
   const companiesPanel = (
     <div className="ccard">
       <header>
@@ -139,6 +146,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
           companiesCount={companyList.length}
           messagesCount={messages.length}
           tasksCount={tasks?.length ?? 0}
+          notesCount={notes?.length ?? 0}
           companiesPanel={companiesPanel}
           communicationPanel={<CommunicationPanel contactId={profile.ghl_contact_id ?? ""} messages={messages} />}
           tasksPanel={
@@ -147,7 +155,11 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
               companies={taskCompanies}
               tasks={(tasks ?? []) as TaskRecord[]}
               documentsByTask={documentsByTask}
+              teamMembers={teamMembers ?? []}
             />
+          }
+          notesPanel={
+            <ClientNotesPanel profileId={profileId} companies={taskCompanies} notes={notes ?? []} teamMembers={teamMembers ?? []} />
           }
           infoPanel={<ContactInfoPanel profileId={profileId} profile={profile} />}
         />

@@ -12,6 +12,7 @@ import { ServicesPanel } from "./services-panel";
 import type { ServiceDocRecord } from "./service-row";
 import { ManagersPanel, type ManagerRecord } from "./managers-panel";
 import { CompanyTasksPanel } from "@/components/console/company-tasks-panel";
+import { CompanyNotesPanel } from "@/components/console/company-notes-panel";
 import { GoingOutOfBusinessToggle } from "@/components/console/going-out-of-business-toggle";
 import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
@@ -34,13 +35,14 @@ export default async function StaffCompanyPage({
   const { profileId, companyId } = await params;
   const supabase = await supabaseServer();
 
-  const [{ data: profile }, { data: company }] = await Promise.all([
+  const [{ data: profile }, { data: company }, { data: teamMembers }] = await Promise.all([
     supabase.from("profiles").select("first_name, last_name").eq("id", profileId).single(),
     supabase
       .from("companies")
       .select("id, ghl_opportunity_id, going_out_of_business, team_members(id, full_name)")
       .eq("id", companyId)
       .single(),
+    supabase.from("team_members").select("id, full_name").order("full_name", { ascending: true }),
   ]);
 
   if (!company) notFound();
@@ -108,6 +110,12 @@ export default async function StaffCompanyPage({
   for (const d of taskDocuments ?? []) {
     (documentsByTask[d.task_id] ??= []).push(d);
   }
+
+  const { data: notes } = await supabase
+    .from("notes")
+    .select("id, company_id, profile_id, outcome, body, created_by_name, created_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
 
   // RLS already restricts this to companies assigned to this team member.
 
@@ -230,7 +238,15 @@ export default async function StaffCompanyPage({
 
         <GoingOutOfBusinessToggle companyId={companyId} initialValue={company.going_out_of_business ?? "No"} createdBy="team" />
 
-        <CompanyTasksPanel companyId={companyId} tasks={tasks ?? []} documentsByTask={documentsByTask} assignedTeamMember={assignedTeamMemberForCompany} />
+        <CompanyTasksPanel
+          companyId={companyId}
+          tasks={tasks ?? []}
+          documentsByTask={documentsByTask}
+          teamMembers={teamMembers ?? []}
+          assignedTeamMember={assignedTeamMemberForCompany}
+        />
+
+        <CompanyNotesPanel companyId={companyId} notes={notes ?? []} teamMembers={teamMembers ?? []} />
 
         {bookkeepingCycleOpen && (
           <div className="ccard" style={{ marginBottom: 16 }}>

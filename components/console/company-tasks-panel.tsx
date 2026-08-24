@@ -7,28 +7,30 @@ import { TaskRow, type TaskRecord, type TaskDocRecord } from "./task-row";
 import { EmptyState } from "./ui";
 
 // Lives on a specific company's own page - company_id comes from context, so
-// there's no scope picker here. Assignment always follows this company's own
-// assigned team member (the single-item "assignable" list below), per the
-// "assignment follows who's already assigned to the client" rule.
+// there's no scope picker here. Any task can go to any team member (tasks
+// are assigned individually, by who actually handles that piece of work -
+// not locked to whoever the whole client account happens to be assigned
+// to). The company's own assigned team member is just the default pick.
 export function CompanyTasksPanel({
   companyId,
   tasks,
   documentsByTask,
+  teamMembers,
   assignedTeamMember,
 }: {
   companyId: string;
   tasks: TaskRecord[];
   documentsByTask: Record<string, TaskDocRecord[]>;
+  teamMembers: { id: string; full_name: string }[];
   assignedTeamMember: { id: string; full_name: string } | null;
 }) {
   const router = useRouter();
   const [description, setDescription] = useState("");
   const [required, setRequired] = useState(false);
+  const [assignedTo, setAssignedTo] = useState(assignedTeamMember?.id ?? "");
   const [deadline, setDeadline] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const assignable = assignedTeamMember ? [assignedTeamMember] : [];
 
   async function handleAdd() {
     setAdding(true);
@@ -39,7 +41,7 @@ export function CompanyTasksPanel({
       title: description.slice(0, 60) || "Task",
       description: description || undefined,
       required,
-      assignedTo: assignedTeamMember?.id,
+      assignedTo: assignedTo || undefined,
       deadlineDate: deadline || undefined,
       createdBy: "team",
     });
@@ -62,7 +64,7 @@ export function CompanyTasksPanel({
       <div style={{ padding: "12px 15px" }}>
         {tasks.length === 0 && <EmptyState title="No tasks tracked yet" />}
         {tasks.map((t) => (
-          <TaskRow key={t.id} task={t} documents={documentsByTask[t.id] ?? []} assignableTeamMembers={assignable} />
+          <TaskRow key={t.id} task={t} documents={documentsByTask[t.id] ?? []} assignableTeamMembers={teamMembers} />
         ))}
       </div>
 
@@ -87,7 +89,18 @@ export function CompanyTasksPanel({
           style={{ flex: "1 1 160px", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
         />
 
-        <span className="y">{assignedTeamMember ? `Assigns to ${assignedTeamMember.full_name}` : "No team member assigned to this company yet"}</span>
+        <select
+          value={assignedTo}
+          onChange={(e) => setAssignedTo(e.target.value)}
+          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+        >
+          <option value="">Unassigned</option>
+          {teamMembers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.full_name}
+            </option>
+          ))}
+        </select>
 
         <input
           type="date"

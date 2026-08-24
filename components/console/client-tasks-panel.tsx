@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addTask } from "@/lib/tasks-actions";
 import { TaskRow, type TaskRecord, type TaskDocRecord } from "./task-row";
@@ -10,18 +10,21 @@ type CompanyOption = { id: string; businessName: string; assignedTeamMember: { i
 
 // Lives on a client's Contact page (both Owner and Team portals). Staff
 // picks scope first - client-level, or one of this client's companies -
-// then the assignable team member list narrows accordingly, per the
-// "assignment always follows who's already assigned" rule.
+// then can assign the task to any team member, not just whoever the scoped
+// company happens to be assigned to; that company's assigned member is
+// only offered as the default pick.
 export function ClientTasksPanel({
   profileId,
   companies,
   tasks,
   documentsByTask,
+  teamMembers,
 }: {
   profileId: string;
   companies: CompanyOption[];
   tasks: TaskRecord[];
   documentsByTask: Record<string, TaskDocRecord[]>;
+  teamMembers: { id: string; full_name: string }[];
 }) {
   const router = useRouter();
   const [scope, setScope] = useState<string>("client"); // "client" or a companyId
@@ -31,19 +34,8 @@ export function ClientTasksPanel({
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const assignable = useMemo(() => {
-    if (scope === "client") {
-      const seen = new Map<string, { id: string; full_name: string }>();
-      for (const c of companies) if (c.assignedTeamMember) seen.set(c.assignedTeamMember.id, c.assignedTeamMember);
-      return [...seen.values()];
-    }
-    const company = companies.find((c) => c.id === scope);
-    return company?.assignedTeamMember ? [company.assignedTeamMember] : [];
-  }, [scope, companies]);
-
-  // Auto-fill the only sensible choice; leave it to staff to pick when more
-  // than one assigned team member is in play for a client-level task.
-  const effectiveAssignedTo = assignedTo || (assignable.length === 1 ? assignable[0].id : "");
+  const defaultAssignee = companies.find((c) => c.id === scope)?.assignedTeamMember?.id ?? "";
+  const effectiveAssignedTo = assignedTo || defaultAssignee;
 
   async function handleAdd() {
     setAdding(true);
@@ -74,12 +66,6 @@ export function ClientTasksPanel({
     return companies.find((c) => c.id === task.company_id)?.businessName ?? "";
   }
 
-  function assignableFor(task: TaskRecord): { id: string; full_name: string }[] {
-    if (!task.company_id) return assignable;
-    const member = companies.find((c) => c.id === task.company_id)?.assignedTeamMember;
-    return member ? [member] : [];
-  }
-
   return (
     <div className="ccard">
       <header>
@@ -94,7 +80,7 @@ export function ClientTasksPanel({
             key={t.id}
             task={t}
             documents={documentsByTask[t.id] ?? []}
-            assignableTeamMembers={assignableFor(t)}
+            assignableTeamMembers={teamMembers}
             scopeLabel={scopeLabelFor(t)}
           />
         ))}
@@ -125,22 +111,18 @@ export function ClientTasksPanel({
           style={{ flex: "1 1 160px", fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
         />
 
-        {assignable.length > 1 ? (
-          <select
-            value={effectiveAssignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
-          >
-            <option value="">Choose assignee</option>
-            {assignable.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.full_name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span className="y">{assignable[0] ? `Assigns to ${assignable[0].full_name}` : "No assigned team member to assign to"}</span>
-        )}
+        <select
+          value={effectiveAssignedTo}
+          onChange={(e) => setAssignedTo(e.target.value)}
+          style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+        >
+          <option value="">Unassigned</option>
+          {teamMembers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.full_name}
+            </option>
+          ))}
+        </select>
 
         <input
           type="date"

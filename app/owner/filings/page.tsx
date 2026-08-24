@@ -12,10 +12,13 @@ type CompanyRow = {
   companyId: string;
   profileId: string;
   companyName: string;
+  salesTaxEnabled?: boolean;
   salesTaxFrequency?: string;
   salesTaxApproved?: string;
+  rtEnabled?: boolean;
   rtFrequency?: string;
   rtApproved?: string;
+  payrollEnabled?: boolean;
   payrollFrequency?: string;
   payrollProcessingDate?: string;
   payrollSetupComplete?: boolean;
@@ -48,10 +51,13 @@ export default async function FilingsPage() {
         companyId: c.id,
         profileId: c.profile_id,
         companyName: c.business_name ?? opportunity.name,
+        salesTaxEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxServiceEnabled) === "Yes",
         salesTaxFrequency: customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxFilingFrequency),
         salesTaxApproved: customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxApproved),
+        rtEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.rtServiceEnabled) === "Yes",
         rtFrequency: customFieldValue(cf, OPPORTUNITY_FIELDS.rtFilingFrequency),
         rtApproved: customFieldValue(cf, OPPORTUNITY_FIELDS.rtApproved),
+        payrollEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollServiceEnabled) === "Yes",
         payrollFrequency: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollFilingFrequency),
         payrollProcessingDate: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollProcessingDate),
         payrollSetupComplete: customFieldValue(cf, OPPORTUNITY_FIELDS.surePayrollSetupCompletion) === "Complete",
@@ -61,9 +67,18 @@ export default async function FilingsPage() {
     })
   );
 
-  function groupBy(field: "salesTaxFrequency" | "rtFrequency", approvedField: "salesTaxApproved" | "rtApproved") {
+  // Gated by the same *ServiceEnabled flag that controls whether the field
+  // group even shows on the company page - a company with old filing-
+  // frequency data left over from before a service was turned off shouldn't
+  // still show up here as if that service were active.
+  function groupBy(
+    enabledField: "salesTaxEnabled" | "rtEnabled",
+    field: "salesTaxFrequency" | "rtFrequency",
+    approvedField: "salesTaxApproved" | "rtApproved"
+  ) {
     const groups = new Map<string, CompanyRow[]>();
     for (const r of rows) {
+      if (!r[enabledField]) continue;
       const freq = r[field];
       if (!freq) continue;
       if (!groups.has(freq)) groups.set(freq, []);
@@ -76,11 +91,11 @@ export default async function FilingsPage() {
     }));
   }
 
-  const salesTaxGroups = groupBy("salesTaxFrequency", "salesTaxApproved");
-  const rtGroups = groupBy("rtFrequency", "rtApproved");
+  const salesTaxGroups = groupBy("salesTaxEnabled", "salesTaxFrequency", "salesTaxApproved");
+  const rtGroups = groupBy("rtEnabled", "rtFrequency", "rtApproved");
 
   const payrollRows = rows
-    .filter((r) => r.payrollProcessingDate)
+    .filter((r) => r.payrollEnabled && r.payrollProcessingDate)
     .sort((a, b) => new Date(a.payrollProcessingDate!).getTime() - new Date(b.payrollProcessingDate!).getTime());
 
   const incomeTaxRows = rows

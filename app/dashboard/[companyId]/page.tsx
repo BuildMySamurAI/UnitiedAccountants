@@ -200,7 +200,8 @@ export default async function CompanyPage({
               <AutoSaveField companyId={company.id} fieldKey="businessName" label="Legal business name" initialValue={businessName ?? ""} />
               <AutoSaveField companyId={company.id} fieldKey="mailingAddress" label="Mailing address" initialValue={mailingAddress} />
               <AutoSaveField companyId={company.id} fieldKey="physicalAddress" label="Physical address" initialValue={physicalAddress} />
-              <AutoSaveField companyId={company.id} fieldKey="ein" label="EIN" initialValue={field("ein") ?? ""} />
+              <AutoSaveField companyId={company.id} fieldKey="ein" label="EIN" initialValue={field("ein") ?? ""} mask="ein" placeholder="##-#######" />
+              <AutoSaveField companyId={company.id} fieldKey="ssn" label="SSN" initialValue={field("ssn") ?? ""} mask="ssn" placeholder="###-##-####" />
             </div>
 
             <div className="ccard" style={{ marginBottom: 16 }}>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateStaffCompanyField } from "./actions";
 import type { StaffFieldType } from "@/lib/ghl/staff-fields";
+import { formatEIN, formatSSN } from "@/lib/masked-input";
 
 function SaveBadge({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
   return (
@@ -86,10 +87,13 @@ export function StaffField({
             </select>
           ) : (
             <input
-              type={type}
+              type={type === "ssn" || type === "ein" ? "text" : type}
+              inputMode={type === "ssn" || type === "ein" ? "numeric" : undefined}
+              placeholder={type === "ssn" ? "###-##-####" : type === "ein" ? "##-#######" : undefined}
               value={value}
               onChange={(e) => {
-                setValue(e.target.value);
+                const next = type === "ssn" ? formatSSN(e.target.value) : type === "ein" ? formatEIN(e.target.value) : e.target.value;
+                setValue(next);
                 if (status !== "saving") setStatus("idle");
               }}
               onBlur={() => save(value)}

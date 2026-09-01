@@ -8,7 +8,10 @@ export const STAFF_FILE_FIELDS: { key: keyof typeof OPPORTUNITY_FIELDS; label: s
   { key: "salesTaxSubmissionConfirmation", label: "Sales Tax Submission Confirmation" },
 ];
 
-export type StaffFieldType = "text" | "date" | "select" | "number";
+// "ssn"/"ein" render as a plain text input locked to a digit-only mask
+// (###-##-#### / ##-#######) - see lib/masked-input.ts. The formatted
+// value, hyphens included, is what actually gets saved.
+export type StaffFieldType = "text" | "date" | "select" | "number" | "ssn" | "ein";
 
 export type StaffFieldConfig = {
   key: keyof typeof OPPORTUNITY_FIELDS;
@@ -59,8 +62,11 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
     ],
   },
   {
-    title: "EIN",
-    fields: [{ key: "ein", dbColumn: "ein", label: "EIN", type: "text" }],
+    title: "EIN / SSN",
+    fields: [
+      { key: "ein", dbColumn: "ein", label: "EIN", type: "ein" },
+      { key: "ssn", dbColumn: "ssn", label: "SSN", type: "ssn" },
+    ],
   },
   {
     title: "Income Tax",

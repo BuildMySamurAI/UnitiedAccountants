@@ -45,6 +45,7 @@ export const OPPORTUNITY_FIELDS = {
   sunbizApproved: "qaOpgpL3o9yv5Wfm8FAT", // staff-only
 
   ein: "cPbSWM1vaC6CLWvehERg",
+  ssn: "xZPVCLn4yPzyzk7CmONK", // same access as EIN - locked to a ##-#######/###-##-#### input mask in the portal
   einConfirmationLetter: "nci8nYSyy5LshVKeyZoJ",
 
   salesTaxApproved: "1NKpsNTRzmcZUE2UeZyX", // staff-only

@@ -2,20 +2,33 @@
 
 import { useState } from "react";
 import { updateCompanyField, type EditableFieldKey } from "./actions";
+import { formatEIN, formatSSN } from "@/lib/masked-input";
 
 const STATUS_LABEL = { idle: "Unsaved", saving: "Saving...", saved: "Saved", error: "Error" } as const;
 const STATUS_VARIANT = { idle: "n", saving: "n", saved: "g", error: "r" } as const;
+
+// A plain function prop can't cross the server -> client boundary (this
+// component is rendered from a Server Component page) - so the mask is
+// selected by name here instead of being passed in directly.
+const MASKS = { ein: formatEIN, ssn: formatSSN } as const;
 
 export function AutoSaveField({
   companyId,
   fieldKey,
   label,
   initialValue,
+  mask,
+  placeholder,
 }: {
   companyId: string;
   fieldKey: EditableFieldKey;
   label: string;
   initialValue: string;
+  // SSN/EIN input mask (##-#######/###-##-####) - same formatter the
+  // staff/owner side uses, so both sides save the identical hyphenated
+  // format to GHL.
+  mask?: keyof typeof MASKS;
+  placeholder?: string;
 }) {
   const [value, setValue] = useState(initialValue);
   const [savedValue, setSavedValue] = useState(initialValue);
@@ -23,6 +36,7 @@ export function AutoSaveField({
     initialValue ? "saved" : "idle"
   );
   const [error, setError] = useState<string | null>(null);
+  const format = mask ? MASKS[mask] : undefined;
 
   async function handleBlur() {
     if (value === savedValue) return;
@@ -46,8 +60,10 @@ export function AutoSaveField({
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
         <input
           value={value}
+          placeholder={placeholder}
+          inputMode={format ? "numeric" : undefined}
           onChange={(e) => {
-            setValue(e.target.value);
+            setValue(format ? format(e.target.value) : e.target.value);
             if (status !== "saving") setStatus("idle");
           }}
           onBlur={handleBlur}

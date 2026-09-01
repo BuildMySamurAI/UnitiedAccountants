@@ -29,6 +29,11 @@ export const OPPORTUNITY_FIELDS = {
   mailingAddress: "1EyFMcLHH1WozOzU5cum",
   physicalAddress: "HywP1jrFgQ9ehKqTC7vt",
 
+  // "Personal (Individual tax filer)" vs "Company" - drives whether EIN vs
+  // SSN shows, and whether Sunbiz/RT/Sales Tax show at all. See
+  // lib/company-type.ts for the shared check.
+  companyType: "1DalSqa43QviILrynLD0",
+
   // Gate whether the Sales Tax/eFileSalesTax, Reemployment Tax, Payroll, and
   // Bookkeeping sections show at all for this company, and whether the
   // recurring cron jobs touch it - a company with a service disabled (or

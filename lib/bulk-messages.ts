@@ -3,6 +3,7 @@ import { getAllContacts, getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import type { GhlFieldServiceFilterKey } from "@/lib/message-service-filters";
+import { isPersonalFiler } from "@/lib/company-type";
 
 export type BulkMessageRecipient = {
   profileId: string;
@@ -46,10 +47,14 @@ export async function getBulkMessageRecipients(supabase: SupabaseClient): Promis
       try {
         const opportunity = await getOpportunity(c.ghl_opportunity_id);
         const cf = opportunity.customFields;
+        // A Personal (Individual tax filer) never counts as a Sales Tax/RT
+        // recipient here, even if a stale enabled flag is still on - those
+        // don't apply to an individual filer.
+        const personalFiler = isPersonalFiler(customFieldValue(cf, OPPORTUNITY_FIELDS.companyType));
         const tags: GhlFieldServiceFilterKey[] = [];
-        if (customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxServiceEnabled) === "Yes") tags.push("sales_tax");
+        if (!personalFiler && customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxServiceEnabled) === "Yes") tags.push("sales_tax");
         if (customFieldValue(cf, OPPORTUNITY_FIELDS.payrollServiceEnabled) === "Yes") tags.push("payroll");
-        if (customFieldValue(cf, OPPORTUNITY_FIELDS.rtServiceEnabled) === "Yes") tags.push("reemployment_tax");
+        if (!personalFiler && customFieldValue(cf, OPPORTUNITY_FIELDS.rtServiceEnabled) === "Yes") tags.push("reemployment_tax");
         if (customFieldValue(cf, OPPORTUNITY_FIELDS.bookkeepingServiceEnabled) === "Yes") tags.push("bookkeeping");
         return { companyId: c.id, tags };
       } catch {

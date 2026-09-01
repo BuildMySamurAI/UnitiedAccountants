@@ -13,6 +13,7 @@ import type { ServiceDocRecord } from "@/app/staff/[profileId]/[companyId]/servi
 import { GoingOutOfBusinessToggle } from "@/components/console/going-out-of-business-toggle";
 import { ClientClosingTasks } from "@/components/console/client-closing-tasks";
 import { OwnerInformationCard } from "@/components/console/contact-info-panel";
+import { isPersonalFiler } from "@/lib/company-type";
 
 export default async function CompanyPage({
   params,
@@ -51,6 +52,7 @@ export default async function CompanyPage({
   const mailingAddress = field("mailingAddress") ?? "";
   const physicalAddress = field("physicalAddress") ?? "";
   const einConfirmationLetterUrl = field("einConfirmationLetter");
+  const personalFiler = isPersonalFiler(field("companyType"));
 
   const { data: files } = await supabase
     .from("files")
@@ -125,9 +127,13 @@ export default async function CompanyPage({
   // side - a service that's off (or never configured) shows none of its
   // facts here either, not just blank ones.
   const facts: [string, string | undefined][] = [
-    ["Sunbiz Tracking Number", field("sunbizTrackingNumber")],
-    ["Sunbiz Filing Date", field("sunbizFilingDate")],
-    ...(field("salesTaxServiceEnabled") === "Yes"
+    ...(!personalFiler
+      ? ([
+          ["Sunbiz Tracking Number", field("sunbizTrackingNumber")],
+          ["Sunbiz Filing Date", field("sunbizFilingDate")],
+        ] as [string, string | undefined][])
+      : []),
+    ...(!personalFiler && field("salesTaxServiceEnabled") === "Yes"
       ? ([
           ["Sales Tax Certificate Number", field("salesTaxCertificateNumber")],
           ["Business Partner Number", field("businessPartnerNumber")],
@@ -137,7 +143,7 @@ export default async function CompanyPage({
           ["eFileSalesTax Registration Status", field("efileSalesTaxRegistrationStatus")],
         ] as [string, string | undefined][])
       : []),
-    ...(field("rtServiceEnabled") === "Yes"
+    ...(!personalFiler && field("rtServiceEnabled") === "Yes"
       ? ([
           ["RT Account Number", field("rtAccountNumber")],
           ["RT Filing Frequency", field("rtFilingFrequency")],
@@ -200,8 +206,12 @@ export default async function CompanyPage({
               <AutoSaveField companyId={company.id} fieldKey="businessName" label="Legal business name" initialValue={businessName ?? ""} />
               <AutoSaveField companyId={company.id} fieldKey="mailingAddress" label="Mailing address" initialValue={mailingAddress} />
               <AutoSaveField companyId={company.id} fieldKey="physicalAddress" label="Physical address" initialValue={physicalAddress} />
-              <AutoSaveField companyId={company.id} fieldKey="ein" label="EIN" initialValue={field("ein") ?? ""} mask="ein" placeholder="##-#######" />
-              <AutoSaveField companyId={company.id} fieldKey="ssn" label="SSN" initialValue={field("ssn") ?? ""} mask="ssn" placeholder="###-##-####" />
+              {!personalFiler && (
+                <AutoSaveField companyId={company.id} fieldKey="ein" label="EIN" initialValue={field("ein") ?? ""} mask="ein" placeholder="##-#######" />
+              )}
+              {personalFiler && (
+                <AutoSaveField companyId={company.id} fieldKey="ssn" label="SSN" initialValue={field("ssn") ?? ""} mask="ssn" placeholder="###-##-####" />
+              )}
             </div>
 
             <div className="ccard" style={{ marginBottom: 16 }}>
@@ -211,7 +221,7 @@ export default async function CompanyPage({
               </header>
               <DocumentUploader companyId={company.id} fieldKey="formation_documents" label="Formation Documents" existing={formationDocs} />
               <DocumentUploader companyId={company.id} fieldKey="identification_documents" label="Identification Documents" existing={identificationDocs} />
-              {einConfirmationLetterUrl && (
+              {!personalFiler && einConfirmationLetterUrl && (
                 <div className="doc have">
                   <div className="ic">PDF</div>
                   <div style={{ flex: 1 }}>

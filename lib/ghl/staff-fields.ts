@@ -2,10 +2,10 @@ import { OPPORTUNITY_FIELDS } from "./constants";
 
 // FILE_UPLOAD fields the team fills in (as opposed to Formation Documents /
 // Identification Documents, which the client uploads from their own portal).
-export const STAFF_FILE_FIELDS: { key: keyof typeof OPPORTUNITY_FIELDS; label: string }[] = [
-  { key: "einConfirmationLetter", label: "EIN Confirmation Letter" },
-  { key: "rtSubmissionConfirmation", label: "RT Submission Confirmation" },
-  { key: "salesTaxSubmissionConfirmation", label: "Sales Tax Submission Confirmation" },
+export const STAFF_FILE_FIELDS: { key: keyof typeof OPPORTUNITY_FIELDS; label: string; hiddenForPersonal?: boolean }[] = [
+  { key: "einConfirmationLetter", label: "EIN Confirmation Letter", hiddenForPersonal: true },
+  { key: "rtSubmissionConfirmation", label: "RT Submission Confirmation", hiddenForPersonal: true },
+  { key: "salesTaxSubmissionConfirmation", label: "Sales Tax Submission Confirmation", hiddenForPersonal: true },
 ];
 
 // "ssn"/"ein" render as a plain text input locked to a digit-only mask
@@ -23,6 +23,11 @@ export type StaffFieldConfig = {
   // for fields where "blank" and a real option mean the same thing, so the
   // dropdown should say so rather than showing a misleading "--".
   defaultValue?: string;
+  // "personal" hides this one field when Type = Personal (Individual tax
+  // filer); "company" hides it for everyone else. Used to make EIN/SSN and
+  // the Sales Tax/RT toggles mutually exclusive with that field, without
+  // hiding the whole group they live in.
+  hiddenWhen?: "personal" | "company";
 };
 
 export type StaffFieldGroup = {
@@ -33,12 +38,23 @@ export type StaffFieldGroup = {
   // behave like the add/remove Services system: hidden and reminder-free
   // until a client actually has that service.
   serviceFlag?: keyof typeof OPPORTUNITY_FIELDS;
+  // Whole group is hidden for an individual filer (Type = Personal) -
+  // Sunbiz/Sales Tax/eFileSalesTax/RT don't apply to a personal filer at
+  // all, regardless of what their service-enabled toggles say.
+  hiddenForPersonal?: boolean;
 };
 
 export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Business",
     fields: [
+      {
+        key: "companyType",
+        dbColumn: "company_type",
+        label: "Type",
+        type: "select",
+        options: ["Personal (Individual tax filer)", "Company"],
+      },
       { key: "businessName", dbColumn: "business_name", label: "Business Name", type: "text" },
       { key: "mailingAddress", dbColumn: "mailing_address", label: "Mailing Address", type: "text" },
       { key: "physicalAddress", dbColumn: "physical_address", label: "Physical Address", type: "text" },
@@ -47,14 +63,15 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Active Services",
     fields: [
-      { key: "salesTaxServiceEnabled", dbColumn: "sales_tax_service_enabled", label: "Sales Tax", type: "select", options: ["No", "Yes"] },
+      { key: "salesTaxServiceEnabled", dbColumn: "sales_tax_service_enabled", label: "Sales Tax", type: "select", options: ["No", "Yes"], hiddenWhen: "personal" },
       { key: "payrollServiceEnabled", dbColumn: "payroll_service_enabled", label: "Payroll", type: "select", options: ["No", "Yes"] },
-      { key: "rtServiceEnabled", dbColumn: "rt_service_enabled", label: "Reemployment Tax (RT)", type: "select", options: ["No", "Yes"] },
+      { key: "rtServiceEnabled", dbColumn: "rt_service_enabled", label: "Reemployment Tax (RT)", type: "select", options: ["No", "Yes"], hiddenWhen: "personal" },
       { key: "bookkeepingServiceEnabled", dbColumn: "bookkeeping_service_enabled", label: "Bookkeeping", type: "select", options: ["No", "Yes"] },
     ],
   },
   {
     title: "Sunbiz",
+    hiddenForPersonal: true,
     fields: [
       { key: "sunbizTrackingNumber", dbColumn: "sunbiz_tracking_number", label: "Tracking Number", type: "text" },
       { key: "sunbizFilingDate", dbColumn: "sunbiz_filing_date", label: "Filing Date", type: "date" },
@@ -64,8 +81,8 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "EIN / SSN",
     fields: [
-      { key: "ein", dbColumn: "ein", label: "EIN", type: "ein" },
-      { key: "ssn", dbColumn: "ssn", label: "SSN", type: "ssn" },
+      { key: "ein", dbColumn: "ein", label: "EIN", type: "ein", hiddenWhen: "personal" },
+      { key: "ssn", dbColumn: "ssn", label: "SSN", type: "ssn", hiddenWhen: "company" },
     ],
   },
   {
@@ -91,6 +108,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Sales Tax",
     serviceFlag: "salesTaxServiceEnabled",
+    hiddenForPersonal: true,
     fields: [
       { key: "salesTaxApproved", dbColumn: "sales_tax_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },
       { key: "salesTaxCertificateNumber", dbColumn: "sales_tax_certificate_number", label: "Certificate Number", type: "text" },
@@ -102,6 +120,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "eFileSalesTax",
     serviceFlag: "salesTaxServiceEnabled",
+    hiddenForPersonal: true,
     fields: [
       { key: "efileSalesTaxAdded", dbColumn: "efilesalestax_added", label: "Added?", type: "select", options: ["No", "Yes"] },
       { key: "efileSalesTaxRegistrationStatus", dbColumn: "efilesalestax_registration_status", label: "Registration Status", type: "select", options: ["Pending", "Active", "Inactive"] },
@@ -110,6 +129,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Reemployment Tax (RT)",
     serviceFlag: "rtServiceEnabled",
+    hiddenForPersonal: true,
     fields: [
       { key: "rtApproved", dbColumn: "rt_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },
       { key: "rtAccountNumber", dbColumn: "rt_account_number", label: "Account Number", type: "text" },

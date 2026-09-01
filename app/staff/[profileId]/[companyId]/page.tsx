@@ -4,6 +4,7 @@ import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue, customFieldFileUrl, customFieldFileUrls } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS, PIPELINE_STAGES } from "@/lib/ghl/constants";
 import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
+import { isPersonalFiler } from "@/lib/company-type";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
 import { StaffField } from "./staff-field";
 import { StaffDocument } from "./staff-document";
@@ -53,6 +54,7 @@ export default async function StaffCompanyPage({
   const assignedTeamMemberForCompany = company.team_members as unknown as { id: string; full_name: string } | null;
   const assignedName = assignedTeamMemberForCompany?.full_name;
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
+  const personalFiler = isPersonalFiler(customFieldValue(cf, OPPORTUNITY_FIELDS.companyType));
   const bookkeepingCycleOpen =
     customFieldValue(cf, OPPORTUNITY_FIELDS.bookkeepingServiceEnabled) === "Yes" &&
     !customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate);
@@ -188,14 +190,18 @@ export default async function StaffCompanyPage({
         </div>
 
         {STAFF_FIELD_GROUPS.filter(
-          (group) => !group.serviceFlag || customFieldValue(cf, OPPORTUNITY_FIELDS[group.serviceFlag]) === "Yes"
+          (group) =>
+            (!group.serviceFlag || customFieldValue(cf, OPPORTUNITY_FIELDS[group.serviceFlag]) === "Yes") &&
+            !(group.hiddenForPersonal && personalFiler)
         ).map((group) => (
           <div key={group.title} className="ccard" style={{ marginBottom: 16 }}>
             <header>
               <h3>{group.title}</h3>
             </header>
             <div style={{ padding: "4px 15px" }}>
-              {group.fields.map((f) => {
+              {group.fields
+                .filter((f) => !(f.hiddenWhen === "personal" && personalFiler) && !(f.hiddenWhen === "company" && !personalFiler))
+                .map((f) => {
                 const raw = customFieldValue(cf, OPPORTUNITY_FIELDS[f.key]) ?? f.defaultValue ?? "";
                 const value = f.type === "date" && raw ? raw.slice(0, 10) : raw;
                 return (
@@ -221,7 +227,7 @@ export default async function StaffCompanyPage({
             <span className="hint">upload as filings come back</span>
           </header>
           <div style={{ padding: "4px 15px" }}>
-            {STAFF_FILE_FIELDS.map((f) => (
+            {STAFF_FILE_FIELDS.filter((f) => !(f.hiddenForPersonal && personalFiler)).map((f) => (
               <StaffDocument
                 key={f.key}
                 companyId={companyId}

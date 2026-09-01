@@ -4,6 +4,7 @@ import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { incomeTaxDeadline } from "@/lib/tax-deadline";
+import { isPersonalFiler } from "@/lib/company-type";
 import { SERVICE_TYPE_LABEL, type ServiceTypeKey } from "@/lib/services";
 import { parseDateOnly } from "@/lib/service-deadlines";
 import { ConsoleTopBar, Pill, EmptyState } from "@/components/console/ui";
@@ -47,14 +48,18 @@ export default async function FilingsPage() {
         return;
       }
       const cf = opportunity.customFields;
+      // A Personal (Individual tax filer) never shows under Sales Tax/RT
+      // here, even if a service-enabled flag was left on from before they
+      // were reclassified - those don't apply to an individual filer at all.
+      const personalFiler = isPersonalFiler(customFieldValue(cf, OPPORTUNITY_FIELDS.companyType));
       rows.push({
         companyId: c.id,
         profileId: c.profile_id,
         companyName: c.business_name ?? opportunity.name,
-        salesTaxEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxServiceEnabled) === "Yes",
+        salesTaxEnabled: !personalFiler && customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxServiceEnabled) === "Yes",
         salesTaxFrequency: customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxFilingFrequency),
         salesTaxApproved: customFieldValue(cf, OPPORTUNITY_FIELDS.salesTaxApproved),
-        rtEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.rtServiceEnabled) === "Yes",
+        rtEnabled: !personalFiler && customFieldValue(cf, OPPORTUNITY_FIELDS.rtServiceEnabled) === "Yes",
         rtFrequency: customFieldValue(cf, OPPORTUNITY_FIELDS.rtFilingFrequency),
         rtApproved: customFieldValue(cf, OPPORTUNITY_FIELDS.rtApproved),
         payrollEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollServiceEnabled) === "Yes",

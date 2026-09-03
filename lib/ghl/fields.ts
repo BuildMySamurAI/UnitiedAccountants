@@ -21,6 +21,21 @@ export function customFieldFileUrl(
   return entry && typeof entry === "object" && "url" in entry ? (entry as { url: string }).url : undefined;
 }
 
+// MULTIPLE_OPTIONS (checkbox) fields come back as an array of selected
+// option strings - but occasionally as a single comma-separated string
+// depending on the endpoint, so both shapes are handled defensively, same
+// spirit as customFieldValue checking multiple key names.
+export function customFieldMultiValue(
+  customFields: { id: string; fieldValue?: unknown; value?: unknown }[] | undefined,
+  fieldId: string
+): string[] {
+  const match = customFields?.find((f) => f.id === fieldId);
+  const raw = match?.fieldValue ?? match?.value;
+  if (Array.isArray(raw)) return raw.filter((v): v is string => typeof v === "string");
+  if (typeof raw === "string" && raw) return raw.split(",").map((v) => v.trim());
+  return [];
+}
+
 export type GhlFileFieldEntry = { url: string; name: string };
 
 // Same as customFieldFileUrl but returns every file on a multi-file field,

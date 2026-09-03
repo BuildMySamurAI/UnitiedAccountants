@@ -1,7 +1,8 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getContact, getOpportunity, updateContactCustomFields } from "@/lib/ghl/client";
+import { getContact, getOpportunity, updateContactCustomFields, updateOpportunityCustomFields } from "@/lib/ghl/client";
 import { CONTACT_FIELDS, OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
-import { customFieldValue } from "@/lib/ghl/fields";
+import { customFieldValue, customFieldMultiValue } from "@/lib/ghl/fields";
+import { servicesToEnabledFieldWrites, servicesToEnabledMirrorColumns } from "@/lib/service-intake-mapping";
 
 // Called whenever an opportunity lands in the "Client Onboarding" stage of
 // "New Corporation Onboarding" - either right after the intake form creates
@@ -16,6 +17,18 @@ export async function provisionPortalForOpportunity(opportunityId: string) {
     customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
   const mailingAddress = customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.mailingAddress);
   const physicalAddress = customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.physicalAddress);
+
+  // Seeds the per-service enabled toggles from whatever the client (or
+  // whoever filled the intake) checked on the "Services" field - only ever
+  // applied here, once, at provisioning time. From this point on the
+  // individual toggles on the company page are the live source of truth;
+  // staff can freely override/add/remove without this running again.
+  const selectedServices = customFieldMultiValue(opportunity.customFields, OPPORTUNITY_FIELDS.services);
+  const enabledFieldWrites = servicesToEnabledFieldWrites(selectedServices);
+  if (enabledFieldWrites.length > 0) {
+    await updateOpportunityCustomFields(opportunity.id, enabledFieldWrites);
+  }
+  const enabledMirrorColumns = servicesToEnabledMirrorColumns(selectedServices);
 
   const portalAccountCreated = customFieldValue(contact.customFields, CONTACT_FIELDS.portalAccountCreated);
 
@@ -63,6 +76,7 @@ export async function provisionPortalForOpportunity(opportunityId: string) {
       mailing_address: mailingAddress,
       physical_address: physicalAddress,
       pipeline_stage: "Client Onboarding",
+      ...enabledMirrorColumns,
     })
     .select()
     .single();

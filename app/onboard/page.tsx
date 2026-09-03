@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { submitOnboardingForm, type OnboardResult } from "./actions";
+import { SERVICE_INTAKE_OPTIONS } from "@/lib/service-intake-mapping";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,21 @@ export default function OnboardPage() {
               <Field name="businessName" label="Business Name" required />
               <Field name="mailingAddress" label="Mailing Address" />
               <Field name="physicalAddress" label="Physical Address" />
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">
+                Services
+              </legend>
+              <p className="text-xs text-slate-500">Which of these do you need? Only what's checked will show up in your portal.</p>
+              <div className="space-y-2">
+                {SERVICE_INTAKE_OPTIONS.map((option) => (
+                  <label key={option} className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" name="services" value={option} className="rounded border-slate-300" />
+                    {option}
+                  </label>
+                ))}
+              </div>
             </fieldset>
 
             <Button type="submit" disabled={submitting} className="w-full">

@@ -16,6 +16,7 @@ export async function submitOnboardingForm(formData: FormData): Promise<OnboardR
   const businessName = String(formData.get("businessName") || "").trim();
   const mailingAddress = String(formData.get("mailingAddress") || "").trim();
   const physicalAddress = String(formData.get("physicalAddress") || "").trim();
+  const services = formData.getAll("services").map(String);
 
   if (!firstName || !lastName || !email || !businessName) {
     return { ok: false, error: "First name, last name, email, and business name are required." };
@@ -31,6 +32,7 @@ export async function submitOnboardingForm(formData: FormData): Promise<OnboardR
         { id: OPPORTUNITY_FIELDS.businessName, field_value: businessName },
         { id: OPPORTUNITY_FIELDS.mailingAddress, field_value: mailingAddress },
         { id: OPPORTUNITY_FIELDS.physicalAddress, field_value: physicalAddress },
+        ...(services.length > 0 ? [{ id: OPPORTUNITY_FIELDS.services, field_value: services }] : []),
       ],
     });
 

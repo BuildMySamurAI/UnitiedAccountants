@@ -67,6 +67,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
       { key: "payrollServiceEnabled", dbColumn: "payroll_service_enabled", label: "Payroll", type: "select", options: ["No", "Yes"] },
       { key: "rtServiceEnabled", dbColumn: "rt_service_enabled", label: "Reemployment Tax (RT)", type: "select", options: ["No", "Yes"], hiddenWhen: "personal" },
       { key: "bookkeepingServiceEnabled", dbColumn: "bookkeeping_service_enabled", label: "Bookkeeping", type: "select", options: ["No", "Yes"] },
+      { key: "incomeTaxServiceEnabled", dbColumn: "income_tax_service_enabled", label: "Income Tax", type: "select", options: ["No", "Yes"] },
     ],
   },
   {
@@ -87,6 +88,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   },
   {
     title: "Income Tax",
+    serviceFlag: "incomeTaxServiceEnabled",
     fields: [
       {
         key: "entityType",

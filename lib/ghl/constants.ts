@@ -43,6 +43,14 @@ export const OPPORTUNITY_FIELDS = {
   payrollServiceEnabled: "XTcs0UF7cK1pfNQLFF6C",
   rtServiceEnabled: "3Oyl9Qsf56PZjy9Bkpuv",
   bookkeepingServiceEnabled: "dN8LRoZx286xjJJlR18I",
+  incomeTaxServiceEnabled: "kgusHT4KZSQNF82d5zWy",
+
+  // Multi-select filled at intake (own /onboard form or the GHL-native
+  // intake the webhook covers) - seeds the 5 *ServiceEnabled toggles above
+  // once, at provisioning time. Not read again after that; the individual
+  // toggles are the live source of truth from then on. See
+  // lib/service-intake-mapping.ts.
+  services: "QzREHxnFZD2pUDBAHnWp",
 
   sunbizFilingConfirmation: "gMhB9YzSsTeqzsCUB2Dt", // deprecated - dropped from the portal, Tracking Number is the field of record
   sunbizTrackingNumber: "WTatASHPcFGXlMm8HHRA",

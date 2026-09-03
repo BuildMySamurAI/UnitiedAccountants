@@ -40,7 +40,9 @@ async function ghlFetch(path: string, init?: RequestInit) {
   return text ? JSON.parse(text) : {};
 }
 
-export type GhlCustomFieldWrite = { id: string; field_value: string };
+// field_value is an array for MULTIPLE_OPTIONS (checkbox) fields, a plain
+// string for everything else.
+export type GhlCustomFieldWrite = { id: string; field_value: string | string[] };
 
 export async function upsertContact(input: {
   firstName: string;

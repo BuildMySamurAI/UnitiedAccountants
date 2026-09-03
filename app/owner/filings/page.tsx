@@ -23,6 +23,7 @@ type CompanyRow = {
   payrollFrequency?: string;
   payrollProcessingDate?: string;
   payrollSetupComplete?: boolean;
+  incomeTaxEnabled?: boolean;
   entityType?: string;
   extensionFiled?: string;
 };
@@ -66,6 +67,7 @@ export default async function FilingsPage() {
         payrollFrequency: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollFilingFrequency),
         payrollProcessingDate: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollProcessingDate),
         payrollSetupComplete: customFieldValue(cf, OPPORTUNITY_FIELDS.surePayrollSetupCompletion) === "Complete",
+        incomeTaxEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.incomeTaxServiceEnabled) === "Yes",
         entityType: customFieldValue(cf, OPPORTUNITY_FIELDS.entityType),
         extensionFiled: customFieldValue(cf, OPPORTUNITY_FIELDS.extensionFiled),
       });
@@ -104,6 +106,7 @@ export default async function FilingsPage() {
     .sort((a, b) => new Date(a.payrollProcessingDate!).getTime() - new Date(b.payrollProcessingDate!).getTime());
 
   const incomeTaxRows = rows
+    .filter((r) => r.incomeTaxEnabled)
     .map((r) => ({ ...r, deadline: incomeTaxDeadline(r.entityType, r.extensionFiled) }))
     .filter((r): r is CompanyRow & { deadline: Date } => r.deadline !== null)
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());

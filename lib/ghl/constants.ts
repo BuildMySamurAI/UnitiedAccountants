@@ -91,6 +91,7 @@ export const OPPORTUNITY_FIELDS = {
 
   entityType: "OySYfwIBU9554h2DC0S0",
   extensionFiled: "z7ymOfUbchKEV4fnLaCY", // resets to "No" every Jan 1 - see lib/tax-extension-reset.ts
+  incomeTaxFiled: "O39qxYd8Sf0RiD6B5l7j", // Yes/No/Extension Filed - staff/owner-only, not shown on the client dashboard at all
 
   formationDocuments: "bKfDCsrQ5N0W0RwJf9uh",
   identificationDocuments: "AcPHKSJf6FZKBm6ZtuR1",

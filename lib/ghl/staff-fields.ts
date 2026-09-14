@@ -105,6 +105,14 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
         options: ["No", "Yes"],
         defaultValue: "No",
       },
+      {
+        key: "incomeTaxFiled",
+        dbColumn: "income_tax_filed",
+        label: "Filed?",
+        type: "select",
+        options: ["Yes", "No", "Extension Filed"],
+        defaultValue: "No",
+      },
     ],
   },
   {

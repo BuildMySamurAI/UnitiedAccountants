@@ -18,6 +18,7 @@ import { GoingOutOfBusinessToggle } from "@/components/console/going-out-of-busi
 import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
+import { ASSIGNABLE_SERVICES } from "@/lib/service-assignment";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -40,7 +41,9 @@ export default async function StaffCompanyPage({
     supabase.from("profiles").select("first_name, last_name").eq("id", profileId).single(),
     supabase
       .from("companies")
-      .select("id, ghl_opportunity_id, going_out_of_business, team_members(id, full_name)")
+      .select(
+        "id, ghl_opportunity_id, going_out_of_business, team_members!companies_assigned_team_member_id_fkey(id, full_name), bookkeeping_assigned_team_member_id, sales_tax_assigned_team_member_id, payroll_rt_assigned_team_member_id, income_tax_assigned_team_member_id"
+      )
       .eq("id", companyId)
       .single(),
     supabase.from("team_members").select("id, full_name").order("full_name", { ascending: true }),
@@ -53,6 +56,12 @@ export default async function StaffCompanyPage({
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
   const assignedTeamMemberForCompany = company.team_members as unknown as { id: string; full_name: string } | null;
   const assignedName = assignedTeamMemberForCompany?.full_name;
+
+  const serviceAssignments = ASSIGNABLE_SERVICES.map((service) => {
+    const memberId = (company as Record<string, unknown>)[service.dbColumn] as string | null;
+    const member = (teamMembers ?? []).find((m) => m.id === memberId);
+    return { label: service.label, name: member?.full_name ?? null };
+  });
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
   const personalFiler = isPersonalFiler(customFieldValue(cf, OPPORTUNITY_FIELDS.companyType));
   const bookkeepingCycleOpen =
@@ -176,6 +185,21 @@ export default async function StaffCompanyPage({
               "Not yet assigned"
             )}
             <span style={{ color: "var(--ink-3)" }}> - set from the Owner Portal</span>
+          </div>
+        </div>
+
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Service Assignments</h3>
+          </header>
+          <div style={{ padding: "14px 15px", fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
+            {serviceAssignments.map((s) => (
+              <div key={s.label}>
+                <span style={{ minWidth: 110, display: "inline-block" }}>{s.label}</span>
+                {s.name ? <b>{s.name}</b> : <span style={{ color: "var(--ink-3)" }}>Not yet assigned</span>}
+              </div>
+            ))}
+            <span style={{ color: "var(--ink-3)" }}>Set from the Owner Portal</span>
           </div>
         </div>
 

@@ -20,7 +20,9 @@ export default async function PipelinePage() {
     getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING),
     supabase
       .from("companies")
-      .select("id, business_name, profile_id, ghl_opportunity_id, assigned_team_member_id, profiles(first_name, last_name), team_members(full_name)")
+      .select(
+        "id, business_name, profile_id, ghl_opportunity_id, assigned_team_member_id, profiles(first_name, last_name), team_members!companies_assigned_team_member_id_fkey(full_name)"
+      )
       .order("created_at", { ascending: true }),
   ]);
 

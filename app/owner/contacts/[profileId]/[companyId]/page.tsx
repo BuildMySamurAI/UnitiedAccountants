@@ -19,6 +19,8 @@ import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 import { AssignSelect } from "../../../assign-select";
+import { ServiceAssignSelect } from "../../../service-assign-select";
+import { ASSIGNABLE_SERVICES, type AssignableServiceKey } from "@/lib/service-assignment";
 import { DeleteCompanyButton } from "./delete-company-button";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
@@ -42,7 +44,9 @@ export default async function CompanyDetailPage({
     supabase.from("profiles").select("first_name, last_name").eq("id", profileId).single(),
     supabase
       .from("companies")
-      .select("id, ghl_opportunity_id, assigned_team_member_id, going_out_of_business")
+      .select(
+        "id, ghl_opportunity_id, assigned_team_member_id, going_out_of_business, bookkeeping_assigned_team_member_id, sales_tax_assigned_team_member_id, payroll_rt_assigned_team_member_id, income_tax_assigned_team_member_id"
+      )
       .eq("id", companyId)
       .single(),
     supabase.from("team_members").select("id, full_name").order("full_name", { ascending: true }),
@@ -116,6 +120,13 @@ export default async function CompanyDetailPage({
 
   const assignedTeamMemberForCompany = (teamMembers ?? []).find((m) => m.id === company.assigned_team_member_id) ?? null;
 
+  const serviceAssignedInitialValues: Record<AssignableServiceKey, string> = {
+    bookkeeping: company.bookkeeping_assigned_team_member_id ?? "",
+    salesTax: company.sales_tax_assigned_team_member_id ?? "",
+    payrollRt: company.payroll_rt_assigned_team_member_id ?? "",
+    incomeTax: company.income_tax_assigned_team_member_id ?? "",
+  };
+
   const { data: notes } = await supabase
     .from("notes")
     .select("id, company_id, profile_id, outcome, body, created_by_name, created_at")
@@ -169,6 +180,19 @@ export default async function CompanyDetailPage({
           </header>
           <div style={{ padding: "14px 15px" }}>
             <AssignSelect companyId={companyId} teamMembers={teamMembers ?? []} initialValue={company.assigned_team_member_id ?? ""} />
+          </div>
+        </div>
+
+        <div className="ccard" style={{ marginBottom: 16 }}>
+          <header>
+            <h3>Service Assignments</h3>
+          </header>
+          <div style={{ padding: "14px 15px" }}>
+            <ServiceAssignSelect
+              companyId={companyId}
+              teamMembers={teamMembers ?? []}
+              initialValues={serviceAssignedInitialValues}
+            />
           </div>
         </div>
 

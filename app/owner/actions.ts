@@ -9,6 +9,7 @@ import {
   addContactTags,
 } from "@/lib/ghl/client";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
+import { ASSIGNABLE_SERVICES, type AssignableServiceKey } from "@/lib/service-assignment";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -49,6 +50,84 @@ export async function assignTeamMember(companyId: string, teamMemberId: string |
 
   const { data: company, error: fetchError } = await supabase
     .from("companies")
+    .select("ghl_opportunity_id, assigned_team_member_id")
+    .eq("id", companyId)
+    .single();
+
+  if (fetchError || !company) {
+    return { ok: false, error: "Company not found." };
+  }
+
+  let assignedName = "";
+  let assignedEmail = "";
+  if (teamMemberId) {
+    const { data: teamMember, error: teamMemberError } = await supabase
+      .from("team_members")
+      .select("full_name, email")
+      .eq("id", teamMemberId)
+      .single();
+    if (teamMemberError || !teamMember) {
+      return { ok: false, error: "Team member not found." };
+    }
+    assignedName = teamMember.full_name ?? "";
+    assignedEmail = teamMember.email ?? "";
+  }
+
+  // First time this company ever gets an assignee, seed all 4 per-service
+  // assignments to match. Any later company-level reassignment leaves them
+  // alone - once a service has its own assignee, only changing that service
+  // directly (assignServiceTeamMember) touches it again.
+  const isFirstAssignment = !company.assigned_team_member_id && !!teamMemberId;
+
+  const ghlUpdates: { id: string; field_value: string }[] = [
+    { id: OPPORTUNITY_FIELDS.assignedTeamMember, field_value: assignedName },
+    { id: OPPORTUNITY_FIELDS.assignedTeamMemberEmail, field_value: assignedEmail },
+  ];
+  if (isFirstAssignment) {
+    for (const service of ASSIGNABLE_SERVICES) {
+      ghlUpdates.push(
+        { id: OPPORTUNITY_FIELDS[service.nameField], field_value: assignedName },
+        { id: OPPORTUNITY_FIELDS[service.emailField], field_value: assignedEmail }
+      );
+    }
+  }
+
+  try {
+    await updateOpportunityCustomFields(company.ghl_opportunity_id, ghlUpdates);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to update GHL" };
+  }
+
+  const companyUpdate: Record<string, string | null> = { assigned_team_member_id: teamMemberId };
+  if (isFirstAssignment) {
+    for (const service of ASSIGNABLE_SERVICES) {
+      companyUpdate[service.dbColumn] = teamMemberId;
+    }
+  }
+
+  const { error: updateError } = await supabase.from("companies").update(companyUpdate).eq("id", companyId);
+
+  if (updateError) {
+    return { ok: false, error: updateError.message };
+  }
+
+  return { ok: true };
+}
+
+export async function assignServiceTeamMember(
+  companyId: string,
+  serviceKey: AssignableServiceKey,
+  teamMemberId: string | null
+): Promise<ActionResult> {
+  const service = ASSIGNABLE_SERVICES.find((s) => s.key === serviceKey);
+  if (!service) {
+    return { ok: false, error: "Unknown service." };
+  }
+
+  const supabase = await supabaseServer();
+
+  const { data: company, error: fetchError } = await supabase
+    .from("companies")
     .select("ghl_opportunity_id")
     .eq("id", companyId)
     .single();
@@ -74,8 +153,8 @@ export async function assignTeamMember(companyId: string, teamMemberId: string |
 
   try {
     await updateOpportunityCustomFields(company.ghl_opportunity_id, [
-      { id: OPPORTUNITY_FIELDS.assignedTeamMember, field_value: assignedName },
-      { id: OPPORTUNITY_FIELDS.assignedTeamMemberEmail, field_value: assignedEmail },
+      { id: OPPORTUNITY_FIELDS[service.nameField], field_value: assignedName },
+      { id: OPPORTUNITY_FIELDS[service.emailField], field_value: assignedEmail },
     ]);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to update GHL" };
@@ -83,7 +162,7 @@ export async function assignTeamMember(companyId: string, teamMemberId: string |
 
   const { error: updateError } = await supabase
     .from("companies")
-    .update({ assigned_team_member_id: teamMemberId })
+    .update({ [service.dbColumn]: teamMemberId })
     .eq("id", companyId);
 
   if (updateError) {

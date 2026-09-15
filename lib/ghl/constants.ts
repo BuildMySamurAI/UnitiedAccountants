@@ -99,6 +99,19 @@ export const OPPORTUNITY_FIELDS = {
   assignedTeamMember: "hx6HNi8gvVE7d10ytrEc",
   assignedTeamMemberEmail: "duZEwKTuC4zUKbKPryHJ",
 
+  // Per-service assignment, independent of the company-level one above -
+  // seeded to match it once, the first time a company gets any assignee at
+  // all, then never touched again by a company-level reassignment. See
+  // lib/service-assignment.ts.
+  bookkeepingAssignedName: "pYwWtk3uIwjX8U6QqX70",
+  bookkeepingAssignedEmail: "YLNhZHidEkxiYWla458V",
+  salesTaxAssignedName: "ldryV5Gxt5NXT2Bf8ZSA",
+  salesTaxAssignedEmail: "7BxPmDFQ0DRuoBPiLxwN",
+  payrollRtAssignedName: "tiz29X038W1Izo85Sn4x",
+  payrollRtAssignedEmail: "yFwCQWxOnAyEr23gQmHF",
+  incomeTaxAssignedName: "ZDWQYEFrrPJ8AqnsJwlr",
+  incomeTaxAssignedEmail: "T5HNXFksPX8ICnqs1T8R",
+
   bookkeepingStatus: "VeEBAYcwkpj4103RygCn", // staff-only
   currentMonth: "OLXSJwc0VEJ3tV6w5tNe", // staff-only
   statementsReceived: "m8qPGSSYJ3DTlpPUXsMM", // staff-only

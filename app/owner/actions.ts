@@ -282,17 +282,40 @@ export async function deleteContact(profileId: string): Promise<ActionResult> {
 export async function deleteTeamMember(teamMemberId: string): Promise<ActionResult> {
   const admin = supabaseAdmin();
 
+  // Matches on the company-level assignment OR any of the 4 service
+  // assignments - a team member can be independently assigned to a service
+  // without being the company-level assignee, and their name/email need
+  // clearing off GHL either way. The 4 service *columns* clear themselves
+  // automatically (on delete set null on the FK); only the GHL text fields
+  // need an explicit clear here.
   const { data: companies } = await admin
     .from("companies")
-    .select("id, ghl_opportunity_id")
-    .eq("assigned_team_member_id", teamMemberId);
+    .select(
+      "id, ghl_opportunity_id, assigned_team_member_id, bookkeeping_assigned_team_member_id, sales_tax_assigned_team_member_id, payroll_rt_assigned_team_member_id, income_tax_assigned_team_member_id"
+    )
+    .or(
+      `assigned_team_member_id.eq.${teamMemberId},bookkeeping_assigned_team_member_id.eq.${teamMemberId},sales_tax_assigned_team_member_id.eq.${teamMemberId},payroll_rt_assigned_team_member_id.eq.${teamMemberId},income_tax_assigned_team_member_id.eq.${teamMemberId}`
+    );
 
   for (const c of companies ?? []) {
-    try {
-      await updateOpportunityCustomFields(c.ghl_opportunity_id, [
+    const ghlUpdates: { id: string; field_value: string }[] = [];
+    if (c.assigned_team_member_id === teamMemberId) {
+      ghlUpdates.push(
         { id: OPPORTUNITY_FIELDS.assignedTeamMember, field_value: "" },
-        { id: OPPORTUNITY_FIELDS.assignedTeamMemberEmail, field_value: "" },
-      ]);
+        { id: OPPORTUNITY_FIELDS.assignedTeamMemberEmail, field_value: "" }
+      );
+    }
+    for (const service of ASSIGNABLE_SERVICES) {
+      if (c[service.dbColumn as keyof typeof c] === teamMemberId) {
+        ghlUpdates.push(
+          { id: OPPORTUNITY_FIELDS[service.nameField], field_value: "" },
+          { id: OPPORTUNITY_FIELDS[service.emailField], field_value: "" }
+        );
+      }
+    }
+    if (ghlUpdates.length === 0) continue;
+    try {
+      await updateOpportunityCustomFields(c.ghl_opportunity_id, ghlUpdates);
     } catch (err) {
       return { ok: false, error: `Failed to unassign a company: ${err instanceof Error ? err.message : "unknown error"}` };
     }

@@ -1,11 +1,15 @@
 import { OPPORTUNITY_FIELDS } from "./constants";
+import type { AssignableServiceKey } from "@/lib/service-assignment";
 
 // FILE_UPLOAD fields the team fills in (as opposed to Formation Documents /
 // Identification Documents, which the client uploads from their own portal).
-export const STAFF_FILE_FIELDS: { key: keyof typeof OPPORTUNITY_FIELDS; label: string; hiddenForPersonal?: boolean }[] = [
+// assignableService: undefined = general (EIN itself isn't one of the 4
+// assignable services), otherwise scopes it the same way as a StaffFieldGroup
+// below - see lib/staff-access.ts.
+export const STAFF_FILE_FIELDS: { key: keyof typeof OPPORTUNITY_FIELDS; label: string; hiddenForPersonal?: boolean; assignableService?: AssignableServiceKey }[] = [
   { key: "einConfirmationLetter", label: "EIN Confirmation Letter", hiddenForPersonal: true },
-  { key: "rtSubmissionConfirmation", label: "RT Submission Confirmation", hiddenForPersonal: true },
-  { key: "salesTaxSubmissionConfirmation", label: "Sales Tax Submission Confirmation", hiddenForPersonal: true },
+  { key: "rtSubmissionConfirmation", label: "RT Submission Confirmation", hiddenForPersonal: true, assignableService: "payrollRt" },
+  { key: "salesTaxSubmissionConfirmation", label: "Sales Tax Submission Confirmation", hiddenForPersonal: true, assignableService: "salesTax" },
 ];
 
 // "ssn"/"ein" render as a plain text input locked to a digit-only mask
@@ -42,6 +46,11 @@ export type StaffFieldGroup = {
   // Sunbiz/Sales Tax/eFileSalesTax/RT don't apply to a personal filer at
   // all, regardless of what their service-enabled toggles say.
   hiddenForPersonal?: boolean;
+  // Which of the 4 assignable services this group's fields belong to, for
+  // per-service team portal scoping - undefined means general/shared (every
+  // staff member with any access to the company sees it). See
+  // lib/staff-access.ts.
+  assignableService?: AssignableServiceKey;
 };
 
 export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
@@ -89,6 +98,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Income Tax",
     serviceFlag: "incomeTaxServiceEnabled",
+    assignableService: "incomeTax",
     fields: [
       {
         key: "entityType",
@@ -118,6 +128,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Sales Tax",
     serviceFlag: "salesTaxServiceEnabled",
+    assignableService: "salesTax",
     hiddenForPersonal: true,
     fields: [
       { key: "salesTaxApproved", dbColumn: "sales_tax_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },
@@ -130,6 +141,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "eFileSalesTax",
     serviceFlag: "salesTaxServiceEnabled",
+    assignableService: "salesTax",
     hiddenForPersonal: true,
     fields: [
       { key: "efileSalesTaxAdded", dbColumn: "efilesalestax_added", label: "Added?", type: "select", options: ["No", "Yes"] },
@@ -139,6 +151,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Reemployment Tax (RT)",
     serviceFlag: "rtServiceEnabled",
+    assignableService: "payrollRt",
     hiddenForPersonal: true,
     fields: [
       { key: "rtApproved", dbColumn: "rt_approved", label: "Approved?", type: "select", options: ["Pending", "Approved", "Rejected"] },
@@ -150,6 +163,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Payroll (SurePayroll)",
     serviceFlag: "payrollServiceEnabled",
+    assignableService: "payrollRt",
     fields: [
       { key: "surePayrollSetupCompletion", dbColumn: "surepayroll_setup_completion", label: "Setup Completion", type: "select", options: ["Pending", "Complete"] },
       { key: "payrollFilingFrequency", dbColumn: "payroll_filing_frequency", label: "Filing Frequency", type: "select", options: ["Weekly", "Bi-Weekly", "Monthly"] },
@@ -159,6 +173,7 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
   {
     title: "Bookkeeping",
     serviceFlag: "bookkeepingServiceEnabled",
+    assignableService: "bookkeeping",
     fields: [
       {
         key: "bookkeepingStatus",

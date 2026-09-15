@@ -19,6 +19,7 @@ import type { TaskDocRecord } from "@/components/console/task-row";
 import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 import { ASSIGNABLE_SERVICES } from "@/lib/service-assignment";
+import { staffAssignmentContext, canSeeService } from "@/lib/staff-access";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -36,6 +37,9 @@ export default async function StaffCompanyPage({
 }) {
   const { profileId, companyId } = await params;
   const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const [{ data: profile }, { data: company }, { data: teamMembers }] = await Promise.all([
     supabase.from("profiles").select("first_name, last_name").eq("id", profileId).single(),
@@ -62,6 +66,11 @@ export default async function StaffCompanyPage({
     const member = (teamMembers ?? []).find((m) => m.id === memberId);
     return { label: service.label, name: member?.full_name ?? null };
   });
+
+  const staffCtx = staffAssignmentContext(
+    { ...company, assigned_team_member_id: assignedTeamMemberForCompany?.id ?? null },
+    user?.id ?? ""
+  );
   const qcPassed = customFieldValue(cf, OPPORTUNITY_FIELDS.qcPassed);
   const personalFiler = isPersonalFiler(customFieldValue(cf, OPPORTUNITY_FIELDS.companyType));
   const bookkeepingCycleOpen =
@@ -216,7 +225,8 @@ export default async function StaffCompanyPage({
         {STAFF_FIELD_GROUPS.filter(
           (group) =>
             (!group.serviceFlag || customFieldValue(cf, OPPORTUNITY_FIELDS[group.serviceFlag]) === "Yes") &&
-            !(group.hiddenForPersonal && personalFiler)
+            !(group.hiddenForPersonal && personalFiler) &&
+            canSeeService(group.assignableService, staffCtx)
         ).map((group) => (
           <div key={group.title} className="ccard" style={{ marginBottom: 16 }}>
             <header>
@@ -245,23 +255,32 @@ export default async function StaffCompanyPage({
           </div>
         ))}
 
-        <div className="ccard" style={{ marginBottom: 16 }}>
-          <header>
-            <h3>Documents (team-provided)</h3>
-            <span className="hint">upload as filings come back</span>
-          </header>
-          <div style={{ padding: "4px 15px" }}>
-            {STAFF_FILE_FIELDS.filter((f) => !(f.hiddenForPersonal && personalFiler)).map((f) => (
-              <StaffDocument
-                key={f.key}
-                companyId={companyId}
-                ghlFieldId={OPPORTUNITY_FIELDS[f.key]}
-                label={f.label}
-                initialUrl={customFieldFileUrl(cf, OPPORTUNITY_FIELDS[f.key])}
-              />
-            ))}
-          </div>
-        </div>
+        {(() => {
+          const visibleStaffFileFields = STAFF_FILE_FIELDS.filter(
+            (f) => !(f.hiddenForPersonal && personalFiler) && canSeeService(f.assignableService, staffCtx)
+          );
+          return (
+            visibleStaffFileFields.length > 0 && (
+              <div className="ccard" style={{ marginBottom: 16 }}>
+                <header>
+                  <h3>Documents (team-provided)</h3>
+                  <span className="hint">upload as filings come back</span>
+                </header>
+                <div style={{ padding: "4px 15px" }}>
+                  {visibleStaffFileFields.map((f) => (
+                    <StaffDocument
+                      key={f.key}
+                      companyId={companyId}
+                      ghlFieldId={OPPORTUNITY_FIELDS[f.key]}
+                      label={f.label}
+                      initialUrl={customFieldFileUrl(cf, OPPORTUNITY_FIELDS[f.key])}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          );
+        })()}
 
         <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
 
@@ -280,7 +299,7 @@ export default async function StaffCompanyPage({
 
         <CompanyNotesPanel companyId={companyId} notes={notes ?? []} teamMembers={teamMembers ?? []} canManage={false} />
 
-        {bookkeepingCycleOpen && (
+        {bookkeepingCycleOpen && canSeeService("bookkeeping", staffCtx) && (
           <div className="ccard" style={{ marginBottom: 16 }}>
             <header>
               <h3>Monthly Bookkeeping Documents</h3>

@@ -7,8 +7,43 @@ import {
   setOpportunityFileField,
   appendOpportunityFileField,
 } from "@/lib/ghl/client";
+import { staffAssignmentContext, canEditField } from "@/lib/staff-access";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+const ASSIGNMENT_COLUMNS =
+  "ghl_opportunity_id, assigned_team_member_id, bookkeeping_assigned_team_member_id, sales_tax_assigned_team_member_id, payroll_rt_assigned_team_member_id, income_tax_assigned_team_member_id";
+
+// Re-checks the field's service scope server-side, on top of it already
+// being hidden in the UI - the field-save/upload actions below are shared
+// across every field, so hiding the input isn't enough on its own to stop a
+// request naming a field outside the caller's assigned service(s).
+async function assertFieldAccess(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  companyId: string,
+  ghlFieldId: string
+): Promise<{ ok: true; ghl_opportunity_id: string } | { ok: false; error: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated." };
+
+  const { data: company, error: fetchError } = await supabase
+    .from("companies")
+    .select(ASSIGNMENT_COLUMNS)
+    .eq("id", companyId)
+    .single();
+  if (fetchError || !company) {
+    return { ok: false, error: "Company not found." };
+  }
+
+  const ctx = staffAssignmentContext(company, user.id);
+  if (!canEditField(ghlFieldId, ctx)) {
+    return { ok: false, error: "You don't have access to this field." };
+  }
+
+  return { ok: true, ghl_opportunity_id: company.ghl_opportunity_id };
+}
 
 export async function updateStaffCompanyField(
   companyId: string,
@@ -18,15 +53,9 @@ export async function updateStaffCompanyField(
 ): Promise<ActionResult> {
   const supabase = await supabaseServer();
 
-  const { data: company, error: fetchError } = await supabase
-    .from("companies")
-    .select("ghl_opportunity_id")
-    .eq("id", companyId)
-    .single();
-
-  if (fetchError || !company) {
-    return { ok: false, error: "Company not found." };
-  }
+  const access = await assertFieldAccess(supabase, companyId, ghlFieldId);
+  if (!access.ok) return access;
+  const company = { ghl_opportunity_id: access.ghl_opportunity_id };
 
   try {
     await updateOpportunityCustomFields(company.ghl_opportunity_id, [{ id: ghlFieldId, field_value: value }]);
@@ -58,15 +87,9 @@ export async function uploadStaffDocument(
 
   const supabase = await supabaseServer();
 
-  const { data: company, error: fetchError } = await supabase
-    .from("companies")
-    .select("ghl_opportunity_id")
-    .eq("id", companyId)
-    .single();
-
-  if (fetchError || !company) {
-    return { ok: false, error: "Company not found." };
-  }
+  const access = await assertFieldAccess(supabase, companyId, ghlFieldId);
+  if (!access.ok) return access;
+  const company = { ghl_opportunity_id: access.ghl_opportunity_id };
 
   try {
     const uploaded = await uploadMedia(file, file.name);
@@ -97,15 +120,9 @@ export async function uploadStaffDocumentMulti(
 
   const supabase = await supabaseServer();
 
-  const { data: company, error: fetchError } = await supabase
-    .from("companies")
-    .select("ghl_opportunity_id")
-    .eq("id", companyId)
-    .single();
-
-  if (fetchError || !company) {
-    return { ok: false, error: "Company not found." };
-  }
+  const access = await assertFieldAccess(supabase, companyId, ghlFieldId);
+  if (!access.ok) return access;
+  const company = { ghl_opportunity_id: access.ghl_opportunity_id };
 
   try {
     const uploaded = await uploadMedia(file, file.name);

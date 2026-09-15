@@ -136,6 +136,13 @@ export const OPPORTUNITY_FIELDS = {
   businessTaxReceipt: "S2a1zDztsw89x9G7x0wA",
 } as const;
 
+// Reverse lookup - GHL field id -> its OPPORTUNITY_FIELDS key. Used to figure
+// out which service a field save request belongs to without threading the
+// key itself through every call site.
+export const FIELD_KEY_BY_ID: Record<string, keyof typeof OPPORTUNITY_FIELDS> = Object.fromEntries(
+  Object.entries(OPPORTUNITY_FIELDS).map(([key, id]) => [id, key as keyof typeof OPPORTUNITY_FIELDS])
+);
+
 // Fields that are staff-only - never shown to the client, even read-only.
 export const STAFF_ONLY_OPPORTUNITY_FIELDS = new Set<string>([
   OPPORTUNITY_FIELDS.sunbizApproved,

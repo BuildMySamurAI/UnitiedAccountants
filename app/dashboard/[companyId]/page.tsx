@@ -7,6 +7,7 @@ import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "
 import { ConsoleTopBar, EmptyState } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 import { AutoSaveField } from "./auto-save-field";
+import { SsnField } from "./ssn-field";
 import DocumentUploader from "./document-uploader";
 import { ClientServices } from "./client-services";
 import type { ServiceDocRecord } from "@/app/staff/[profileId]/[companyId]/service-row";
@@ -210,7 +211,7 @@ export default async function CompanyPage({
                 <AutoSaveField companyId={company.id} fieldKey="ein" label="EIN" initialValue={field("ein") ?? ""} mask="ein" placeholder="##-#######" />
               )}
               {personalFiler && (
-                <AutoSaveField companyId={company.id} fieldKey="ssn" label="SSN" initialValue={field("ssn") ?? ""} mask="ssn" placeholder="###-##-####" />
+                <SsnField companyId={company.id} label="SSN" hasValue={!!field("ssn")} placeholder="###-##-####" />
               )}
             </div>
 

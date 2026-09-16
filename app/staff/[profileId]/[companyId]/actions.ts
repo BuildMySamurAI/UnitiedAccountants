@@ -8,8 +8,17 @@ import {
   appendOpportunityFileField,
 } from "@/lib/ghl/client";
 import { staffAssignmentContext, canEditField } from "@/lib/staff-access";
+import { revealCompanySsn, type RevealResult } from "@/lib/ssn-reveal";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+// EIN/SSN is a general field (not gated by service assignment - see
+// lib/staff-access.ts), so this doesn't add any new restriction beyond the
+// same company access any staff member with an assignment already has.
+export async function revealSsn(companyId: string): Promise<RevealResult> {
+  const supabase = await supabaseServer();
+  return revealCompanySsn(supabase, companyId, "team");
+}
 
 const ASSIGNMENT_COLUMNS =
   "ghl_opportunity_id, assigned_team_member_id, bookkeeping_assigned_team_member_id, sales_tax_assigned_team_member_id, payroll_rt_assigned_team_member_id, income_tax_assigned_team_member_id";

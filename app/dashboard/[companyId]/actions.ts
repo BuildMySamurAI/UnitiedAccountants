@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { updateOpportunityCustomFields, uploadMedia, appendOpportunityFileField } from "@/lib/ghl/client";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
+import { revealCompanySsn, type RevealResult } from "@/lib/ssn-reveal";
 
 // The 7 team-provided bookkeeping fields (Corp Renewals, Sales Tax, etc.)
 // are deliberately excluded here - the client only ever views those
@@ -25,6 +26,11 @@ const EDITABLE_FIELD_MAP = {
 export type EditableFieldKey = keyof typeof EDITABLE_FIELD_MAP;
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+export async function revealSsn(companyId: string): Promise<RevealResult> {
+  const supabase = await supabaseServer();
+  return revealCompanySsn(supabase, companyId, "client");
+}
 
 export async function updateCompanyField(
   companyId: string,

@@ -10,8 +10,14 @@ import {
 } from "@/lib/ghl/client";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { ASSIGNABLE_SERVICES, type AssignableServiceKey } from "@/lib/service-assignment";
+import { revealCompanySsn, type RevealResult } from "@/lib/ssn-reveal";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+export async function revealSsn(companyId: string): Promise<RevealResult> {
+  const supabase = await supabaseServer();
+  return revealCompanySsn(supabase, companyId, "owner");
+}
 
 export async function inviteTeamMember(formData: FormData): Promise<ActionResult> {
   const email = String(formData.get("email") || "").trim();

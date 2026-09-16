@@ -7,6 +7,8 @@ import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
 import { isPersonalFiler } from "@/lib/company-type";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
 import { StaffField } from "./staff-field";
+import { SsnField } from "./ssn-field";
+import { revealSsn } from "./actions";
 import { StaffDocument } from "./staff-document";
 import { StaffDocumentMulti } from "./staff-document-multi";
 import { ServicesPanel } from "./services-panel";
@@ -247,6 +249,19 @@ export default async function StaffCompanyPage({
                 .map((f) => {
                 const raw = customFieldValue(cf, OPPORTUNITY_FIELDS[f.key]) ?? f.defaultValue ?? "";
                 const value = f.type === "date" && raw ? raw.slice(0, 10) : raw;
+                if (f.type === "ssn") {
+                  return (
+                    <SsnField
+                      key={f.key}
+                      companyId={companyId}
+                      ghlFieldId={OPPORTUNITY_FIELDS[f.key]}
+                      dbColumn={f.dbColumn}
+                      label={f.label}
+                      hasValue={!!value}
+                      onReveal={revealSsn}
+                    />
+                  );
+                }
                 return (
                   <StaffField
                     key={f.key}

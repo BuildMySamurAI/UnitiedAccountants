@@ -20,6 +20,7 @@ import { ConsoleTopBar, Pill, StageProgress } from "@/components/console/ui";
 import { EntitySwitch } from "@/components/console/entity-switch";
 import { ASSIGNABLE_SERVICES } from "@/lib/service-assignment";
 import { staffAssignmentContext, canSeeService } from "@/lib/staff-access";
+import { getDefaultOwner } from "@/lib/default-owner";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -60,6 +61,10 @@ export default async function StaffCompanyPage({
   const businessName = customFieldValue(cf, OPPORTUNITY_FIELDS.businessName) ?? opportunity.name;
   const assignedTeamMemberForCompany = company.team_members as unknown as { id: string; full_name: string } | null;
   const assignedName = assignedTeamMemberForCompany?.full_name;
+  // Display-only fallback for an unassigned company - never fed into
+  // staffCtx below, so it has no effect on who can actually see/edit what.
+  const defaultOwner = assignedName ? null : await getDefaultOwner(supabase);
+  const displayAssignedName = assignedName ?? defaultOwner?.full_name;
 
   const serviceAssignments = ASSIGNABLE_SERVICES.map((service) => {
     const memberId = (company as Record<string, unknown>)[service.dbColumn] as string | null;
@@ -189,6 +194,10 @@ export default async function StaffCompanyPage({
             {assignedName ? (
               <>
                 Assigned to <b>{assignedName}</b>
+              </>
+            ) : displayAssignedName ? (
+              <>
+                Assigned to <b>{displayAssignedName}</b> <span style={{ color: "var(--ink-3)" }}>(owner, default - not yet assigned)</span>
               </>
             ) : (
               "Not yet assigned"

@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getAllOpportunitiesInPipeline } from "@/lib/ghl/client";
 import { PIPELINE_NEW_CORP_ONBOARDING, PIPELINE_STAGES } from "@/lib/ghl/constants";
 import { ConsoleTopBar, EmptyState } from "@/components/console/ui";
+import { getDefaultOwner } from "@/lib/default-owner";
 
 const DOT: Record<string, string> = {
   "Client Onboarding": "var(--ink-3)",
@@ -16,7 +17,7 @@ const DOT: Record<string, string> = {
 export default async function PipelinePage() {
   const supabase = await supabaseServer();
 
-  const [opportunities, { data: companies }] = await Promise.all([
+  const [opportunities, { data: companies }, defaultOwner] = await Promise.all([
     getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING),
     supabase
       .from("companies")
@@ -24,6 +25,7 @@ export default async function PipelinePage() {
         "id, business_name, profile_id, ghl_opportunity_id, assigned_team_member_id, profiles(first_name, last_name), team_members!companies_assigned_team_member_id_fkey(full_name)"
       )
       .order("created_at", { ascending: true }),
+    getDefaultOwner(supabase),
   ]);
 
   const companyByOpportunityId = new Map((companies ?? []).map((c) => [c.ghl_opportunity_id, c]));
@@ -41,7 +43,7 @@ export default async function PipelinePage() {
           companyId: company?.id,
           profileId: company?.profile_id,
           clientName: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "Unknown client",
-          assignee: teamMember?.full_name ?? "Unassigned",
+          assignee: teamMember?.full_name ?? (defaultOwner ? `${defaultOwner.full_name} (default)` : "Unassigned"),
         };
       });
     return { ...stage, deals };

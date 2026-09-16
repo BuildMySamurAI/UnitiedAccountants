@@ -3,6 +3,7 @@ import { getContact, getOpportunity, updateContactCustomFields, updateOpportunit
 import { CONTACT_FIELDS, OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { customFieldValue, customFieldMultiValue } from "@/lib/ghl/fields";
 import { servicesToEnabledFieldWrites, servicesToEnabledMirrorColumns } from "@/lib/service-intake-mapping";
+import { getDefaultOwner } from "@/lib/default-owner";
 
 // Called whenever an opportunity lands in the "Client Onboarding" stage of
 // "New Corporation Onboarding" - either right after the intake form creates
@@ -81,6 +82,19 @@ export async function provisionPortalForOpportunity(opportunityId: string) {
     .select()
     .single();
   if (companyError) throw companyError;
+
+  // Every new company starts with no company-level assignee - write the
+  // default owner's name/email into the same GHL fields a real assignment
+  // would, so anything downstream that reads them for automations always
+  // has someone to reference from day one. companies.assigned_team_member_id
+  // itself stays null - see lib/default-owner.ts for why.
+  const defaultOwner = await getDefaultOwner(admin);
+  if (defaultOwner) {
+    await updateOpportunityCustomFields(opportunity.id, [
+      { id: OPPORTUNITY_FIELDS.assignedTeamMember, field_value: defaultOwner.full_name },
+      { id: OPPORTUNITY_FIELDS.assignedTeamMemberEmail, field_value: defaultOwner.email },
+    ]);
+  }
 
   return { profileId, company };
 }

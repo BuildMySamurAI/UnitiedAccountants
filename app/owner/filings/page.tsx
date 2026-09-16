@@ -26,6 +26,7 @@ type CompanyRow = {
   incomeTaxEnabled?: boolean;
   entityType?: string;
   extensionFiled?: string;
+  incomeTaxFiled?: string;
 };
 
 export default async function FilingsPage() {
@@ -70,6 +71,7 @@ export default async function FilingsPage() {
         incomeTaxEnabled: customFieldValue(cf, OPPORTUNITY_FIELDS.incomeTaxServiceEnabled) === "Yes",
         entityType: customFieldValue(cf, OPPORTUNITY_FIELDS.entityType),
         extensionFiled: customFieldValue(cf, OPPORTUNITY_FIELDS.extensionFiled),
+        incomeTaxFiled: customFieldValue(cf, OPPORTUNITY_FIELDS.incomeTaxFiled),
       });
     })
   );
@@ -107,9 +109,10 @@ export default async function FilingsPage() {
 
   const incomeTaxRows = rows
     .filter((r) => r.incomeTaxEnabled)
-    .map((r) => ({ ...r, deadline: incomeTaxDeadline(r.entityType, r.extensionFiled) }))
-    .filter((r): r is CompanyRow & { deadline: Date } => r.deadline !== null)
-    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+    .map((r) => ({ ...r, deadline: incomeTaxDeadline(r.entityType, r.extensionFiled, r.incomeTaxFiled) }))
+    .filter((r): r is CompanyRow & { deadline: NonNullable<ReturnType<typeof incomeTaxDeadline>> } => r.deadline !== null)
+    .sort((a, b) => a.deadline.date.getTime() - b.deadline.date.getTime());
+  const incomeTaxOverdueCount = incomeTaxRows.filter((r) => r.deadline.overdue).length;
 
   const companyById = new Map((companies ?? []).map((c) => [c.id, c]));
   const { data: services } = await supabase
@@ -184,7 +187,10 @@ export default async function FilingsPage() {
         <div className="ccard" style={{ marginBottom: 16 }}>
           <header>
             <h3>Upcoming income tax deadlines</h3>
-            <span className="hint">{incomeTaxRows.length} companies · from Entity Type + extension status</span>
+            <span className="hint">
+              {incomeTaxRows.length} companies
+              {incomeTaxOverdueCount > 0 ? ` · ${incomeTaxOverdueCount} overdue` : ""} · from Entity Type + extension + filed status
+            </span>
           </header>
           <table>
             <thead>
@@ -193,6 +199,7 @@ export default async function FilingsPage() {
                 <th>Deadline</th>
                 <th>Entity Type</th>
                 <th>Extension Filed</th>
+                <th>Filed?</th>
               </tr>
             </thead>
             <tbody>
@@ -203,14 +210,30 @@ export default async function FilingsPage() {
                       <b>{r.companyName}</b>
                     </Link>
                   </td>
-                  <td className="mono">{r.deadline.toLocaleDateString()}</td>
+                  <td className="mono">
+                    {r.deadline.date.toLocaleDateString()}
+                    {r.deadline.overdue && (
+                      <span style={{ marginLeft: 8 }}>
+                        <Pill variant="r">Overdue</Pill>
+                      </span>
+                    )}
+                  </td>
                   <td className="mono">{r.entityType ?? "-"}</td>
                   <td>{r.extensionFiled === "Yes" ? <Pill variant="a">Yes</Pill> : <Pill variant="n">No</Pill>}</td>
+                  <td>
+                    {r.incomeTaxFiled === "Yes" ? (
+                      <Pill variant="g">Yes</Pill>
+                    ) : r.deadline.overdue ? (
+                      <Pill variant="r">No</Pill>
+                    ) : (
+                      <Pill variant="n">{r.incomeTaxFiled || "No"}</Pill>
+                    )}
+                  </td>
                 </tr>
               ))}
               {incomeTaxRows.length === 0 && (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={5}>
                     <EmptyState title="No entity types set yet" />
                   </td>
                 </tr>

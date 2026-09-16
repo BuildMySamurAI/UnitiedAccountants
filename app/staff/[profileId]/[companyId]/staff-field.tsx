@@ -34,6 +34,7 @@ export function StaffField({
   type,
   options,
   initialValue,
+  hint,
 }: {
   companyId: string;
   ghlFieldId: string;
@@ -42,6 +43,7 @@ export function StaffField({
   type: StaffFieldType;
   options?: string[];
   initialValue: string;
+  hint?: string;
 }) {
   const [value, setValue] = useState(initialValue);
   const [savedValue, setSavedValue] = useState(initialValue);
@@ -103,6 +105,7 @@ export function StaffField({
           <SaveBadge status={status} />
         </div>
       </div>
+      {hint && <p className="text-xs text-slate-500 mt-1 ml-[13.5rem]">{hint}</p>}
       {error && <p className="text-xs text-red-600 mt-1 ml-[13.5rem]">{error}</p>}
     </div>
   );

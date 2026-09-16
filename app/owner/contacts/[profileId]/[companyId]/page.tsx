@@ -4,7 +4,7 @@ import { getOpportunity } from "@/lib/ghl/client";
 import { customFieldValue, customFieldFileUrl, customFieldFileUrls } from "@/lib/ghl/fields";
 import { OPPORTUNITY_FIELDS, PIPELINE_STAGES } from "@/lib/ghl/constants";
 import { STAFF_FIELD_GROUPS, STAFF_FILE_FIELDS } from "@/lib/ghl/staff-fields";
-import { isPersonalFiler } from "@/lib/company-type";
+import { isPersonalFiler, validEntityTypesFor } from "@/lib/company-type";
 import { CLIENT_BOOKKEEPING_FILE_FIELDS, SHARED_BOOKKEEPING_FILE_FIELDS } from "@/lib/ghl/bookkeeping-file-fields";
 import { StaffField } from "@/app/staff/[profileId]/[companyId]/staff-field";
 import { SsnField } from "@/app/staff/[profileId]/[companyId]/ssn-field";
@@ -244,8 +244,9 @@ export default async function CompanyDetailPage({
                     dbColumn={f.dbColumn}
                     label={f.label}
                     type={f.type}
-                    options={f.options}
+                    options={f.key === "entityType" ? [...validEntityTypesFor(customFieldValue(cf, OPPORTUNITY_FIELDS.companyType))] : f.options}
                     initialValue={value}
+                    hint={f.hint}
                   />
                 );
               })}

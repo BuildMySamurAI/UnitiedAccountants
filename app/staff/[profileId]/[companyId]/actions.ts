@@ -6,7 +6,11 @@ import {
   uploadMedia,
   setOpportunityFileField,
   appendOpportunityFileField,
+  getOpportunity,
 } from "@/lib/ghl/client";
+import { customFieldValue } from "@/lib/ghl/fields";
+import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
+import { validEntityTypesFor } from "@/lib/company-type";
 import { staffAssignmentContext, canEditField } from "@/lib/staff-access";
 import { revealCompanySsn, type RevealResult } from "@/lib/ssn-reveal";
 
@@ -46,6 +50,18 @@ async function assertFieldAccess(
     return { ok: false, error: "Company not found." };
   }
 
+  // Owner always has full field-edit access regardless of assignment - the
+  // Owner Portal reuses this exact same action for every field, so without
+  // this check the owner would be subject to the same per-service
+  // restriction as staff below, and get blocked on any company with no
+  // assignee covering that field's service (only surfaces on a company
+  // with zero assignments at all, which is why this went unnoticed until
+  // now).
+  const { data: ownerRow } = await supabase.from("owners").select("id").eq("id", user.id).maybeSingle();
+  if (ownerRow) {
+    return { ok: true, ghl_opportunity_id: company.ghl_opportunity_id };
+  }
+
   const ctx = staffAssignmentContext(company, user.id);
   if (!canEditField(ghlFieldId, ctx)) {
     return { ok: false, error: "You don't have access to this field." };
@@ -66,15 +82,43 @@ export async function updateStaffCompanyField(
   if (!access.ok) return access;
   const company = { ghl_opportunity_id: access.ghl_opportunity_id };
 
+  const ghlUpdates: { id: string; field_value: string }[] = [{ id: ghlFieldId, field_value: value }];
+  const dbUpdates: Record<string, string | null> = { [dbColumn]: value };
+
+  // Entity Type drives the income tax deadline calculation (lib/tax-
+  // deadline.ts), so it has to stay consistent with Type - a Personal filer
+  // can only be "Individual"; a Company can't be. See lib/company-type.ts.
+  if (ghlFieldId === OPPORTUNITY_FIELDS.entityType && value) {
+    const opportunity = await getOpportunity(company.ghl_opportunity_id);
+    const currentCompanyType = customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.companyType);
+    const allowed = validEntityTypesFor(currentCompanyType);
+    if (!allowed.includes(value)) {
+      return { ok: false, error: `"${value}" isn't valid for this company's Type - choose ${allowed.join(" or ")}.` };
+    }
+  }
+
+  // Changing Type can leave the existing Entity Type contradicting the new
+  // value (e.g. switching to Personal while Entity Type is still S-Corp) -
+  // clear it in the same save rather than leaving a stale, now-invalid
+  // combination sitting there for the deadline calculation to silently use.
+  if (ghlFieldId === OPPORTUNITY_FIELDS.companyType) {
+    const opportunity = await getOpportunity(company.ghl_opportunity_id);
+    const currentEntityType = customFieldValue(opportunity.customFields, OPPORTUNITY_FIELDS.entityType);
+    if (currentEntityType && !validEntityTypesFor(value).includes(currentEntityType)) {
+      ghlUpdates.push({ id: OPPORTUNITY_FIELDS.entityType, field_value: "" });
+      dbUpdates.entity_type = null;
+    }
+  }
+
   try {
-    await updateOpportunityCustomFields(company.ghl_opportunity_id, [{ id: ghlFieldId, field_value: value }]);
+    await updateOpportunityCustomFields(company.ghl_opportunity_id, ghlUpdates);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to update GHL" };
   }
 
   const { error: updateError } = await supabase
     .from("companies")
-    .update({ [dbColumn]: value })
+    .update(dbUpdates)
     .eq("id", companyId);
 
   if (updateError) {

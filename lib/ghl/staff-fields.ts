@@ -32,6 +32,9 @@ export type StaffFieldConfig = {
   // the Sales Tax/RT toggles mutually exclusive with that field, without
   // hiding the whole group they live in.
   hiddenWhen?: "personal" | "company";
+  // Short explanatory note rendered under the field's label - for a field
+  // where the right answer isn't obvious from the label alone.
+  hint?: string;
 };
 
 export type StaffFieldGroup = {
@@ -105,7 +108,11 @@ export const STAFF_FIELD_GROUPS: StaffFieldGroup[] = [
         dbColumn: "entity_type",
         label: "Entity Type",
         type: "select",
+        // Static fallback only - the page render loop computes the actual
+        // options live from validEntityTypesFor(companyType), since the
+        // allowed set depends on the Type field. See lib/company-type.ts.
         options: ["S-Corp", "C-Corp", "Partnership", "Individual"],
+        hint: "If this business is an LLC, choose the tax classification it elected (Partnership, S-Corp, or C-Corp) - LLC itself isn't a tax entity type.",
       },
       {
         key: "extensionFiled",

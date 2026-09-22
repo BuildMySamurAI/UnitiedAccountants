@@ -5,6 +5,16 @@ import { provisionPortalForOpportunity } from "@/lib/onboarding";
 import { PERSONAL_FILER_VALUE, validEntityTypesFor } from "@/lib/company-type";
 import { SERVICE_INTAKE_OPTIONS } from "@/lib/service-intake-mapping";
 
+// Column order the template (kept locally, not served from the portal - see
+// app/owner/bulk-import/page.tsx) and this parser both agree on. Services
+// is 4 separate Yes/No columns rather than one combined cell - a single
+// cell can't be a real dropdown for more than one value at a time, but
+// each of these four can. SSN is deliberately not a column at all: bulk-
+// loading plaintext SSNs into a spreadsheet on disk defeats the masking/
+// audit-log/encryption this portal already enforces for that field one
+// company at a time - add it per client through the portal after import
+// instead. EIN is included since it isn't specially protected the same way
+// and firms typically already have it on file for existing clients.
 export const IMPORT_TEMPLATE_HEADER = [
   "First Name",
   "Last Name",
@@ -15,7 +25,11 @@ export const IMPORT_TEMPLATE_HEADER = [
   "Physical Address",
   "Type",
   "Entity Type",
-  "Services",
+  "Bookkeeping",
+  "Sales Tax",
+  "Payroll/RT",
+  "Income Tax",
+  "EIN",
 ] as const;
 
 // Dependency-free RFC4180-ish CSV parser - handles quoted fields (commas,
@@ -91,6 +105,7 @@ export type ParsedImportRow = {
   companyType: string;
   entityType: string;
   services: string[];
+  ein: string;
 };
 
 export type ImportRowError = { rowNumber: number; error: string };
@@ -101,15 +116,21 @@ function normalizeType(raw: string): string {
   return "Company";
 }
 
-function normalizeServices(raw: string): { services: string[]; invalid: string | null } {
-  if (!raw.trim()) return { services: [], invalid: null };
+// Each of the 4 service columns is a Yes/No cell - "yes"/"y"/"true" (any
+// case) all count as Yes, everything else (including blank) is No.
+function isYes(raw: string): boolean {
+  const v = raw.trim().toLowerCase();
+  return v === "yes" || v === "y" || v === "true";
+}
+
+function servicesFromColumns(bookkeeping: string, salesTax: string, payrollRt: string, incomeTax: string): string[] {
+  const [bookkeepingOpt, salesTaxOpt, payrollRtOpt, incomeTaxOpt] = SERVICE_INTAKE_OPTIONS;
   const services: string[] = [];
-  for (const part of raw.split(",").map((s) => s.trim()).filter(Boolean)) {
-    const match = SERVICE_INTAKE_OPTIONS.find((opt) => opt.toLowerCase() === part.toLowerCase());
-    if (!match) return { services: [], invalid: part };
-    services.push(match);
-  }
-  return { services, invalid: null };
+  if (isYes(bookkeeping)) services.push(bookkeepingOpt);
+  if (isYes(salesTax)) services.push(salesTaxOpt);
+  if (isYes(payrollRt)) services.push(payrollRtOpt);
+  if (isYes(incomeTax)) services.push(incomeTaxOpt);
+  return services;
 }
 
 // Skips the header row (row 1) - data rows are numbered from 2 to match
@@ -125,9 +146,22 @@ export function parseImportRows(csvText: string): { rows: ParsedImportRow[]; err
 
   dataRows.forEach((cols, idx) => {
     const rowNumber = idx + 2;
-    const [firstName, lastName, email, phone, businessName, mailingAddress, physicalAddress, typeRaw, entityTypeRaw, servicesRaw] = cols.map(
-      (c) => (c ?? "").trim()
-    );
+    const [
+      firstName,
+      lastName,
+      email,
+      phone,
+      businessName,
+      mailingAddress,
+      physicalAddress,
+      typeRaw,
+      entityTypeRaw,
+      bookkeepingRaw,
+      salesTaxRaw,
+      payrollRtRaw,
+      incomeTaxRaw,
+      einRaw,
+    ] = cols.map((c) => (c ?? "").trim());
 
     if (!firstName || !lastName || !email || !businessName) {
       errors.push({ rowNumber, error: "Missing First Name, Last Name, Email, or Business Name." });
@@ -147,11 +181,7 @@ export function parseImportRows(csvText: string): { rows: ParsedImportRow[]; err
       }
     }
 
-    const { services, invalid } = normalizeServices(servicesRaw ?? "");
-    if (invalid) {
-      errors.push({ rowNumber, error: `Unrecognized service "${invalid}" - use ${SERVICE_INTAKE_OPTIONS.join(", ")}.` });
-      return;
-    }
+    const services = servicesFromColumns(bookkeepingRaw ?? "", salesTaxRaw ?? "", payrollRtRaw ?? "", incomeTaxRaw ?? "");
 
     rows.push({
       rowNumber,
@@ -165,6 +195,7 @@ export function parseImportRows(csvText: string): { rows: ParsedImportRow[]; err
       companyType,
       entityType,
       services,
+      ein: (einRaw ?? "").trim(),
     });
   });
 
@@ -199,6 +230,7 @@ export async function processImportRow(supabase: SupabaseClient, row: ParsedImpo
     ];
     if (row.entityType) customFields.push({ id: OPPORTUNITY_FIELDS.entityType, field_value: row.entityType });
     if (row.services.length > 0) customFields.push({ id: OPPORTUNITY_FIELDS.services, field_value: row.services });
+    if (row.ein) customFields.push({ id: OPPORTUNITY_FIELDS.ein, field_value: row.ein });
 
     const opportunity = await createOpportunity({ contactId: contact.id, name: row.businessName, customFields });
 

@@ -8,6 +8,10 @@ function channelFor(type?: string): { label: string; cls: string } {
   if (t.includes("EMAIL")) return { label: "email", cls: "eml" };
   if (t.includes("SMS") || t.includes("PHONE")) return { label: "sms", cls: "sms" };
   if (t.includes("CALL")) return { label: "call", cls: "call" };
+  // GHL's own system log (opportunity created, stage changed, etc.) - never
+  // actually sent to the contact, just labeled distinctly from a real note
+  // so this list doesn't read as if something was sent when it wasn't.
+  if (t.startsWith("TYPE_ACTIVITY")) return { label: "activity", cls: "note" };
   return { label: "note", cls: "note" };
 }
 

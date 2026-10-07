@@ -348,3 +348,72 @@ export async function deleteTeamMember(teamMemberId: string): Promise<ActionResu
 
   return { ok: true };
 }
+
+// Supabase rejects a fresh invite to an email that's already fully
+// registered (confirmed), but for a team member who was invited and never
+// accepted, calling inviteUserByEmail again on the same (still-unconfirmed)
+// address issues a new invite token/link - this is the same mechanism
+// Supabase's own dashboard uses for its "Resend invitation" button.
+export async function resendTeamMemberInvite(teamMemberId: string): Promise<ActionResult> {
+  const admin = supabaseAdmin();
+
+  const { data: teamMember, error: lookupError } = await admin
+    .from("team_members")
+    .select("email, full_name")
+    .eq("id", teamMemberId)
+    .single();
+
+  if (lookupError || !teamMember) {
+    return { ok: false, error: "Team member not found." };
+  }
+
+  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(teamMember.email, {
+    data: { full_name: teamMember.full_name },
+    redirectTo: `${process.env.NEXT_PUBLIC_INTERNAL_SITE_URL}/auth/callback`,
+  });
+
+  if (inviteError) {
+    const alreadyAccepted = /already.*registered|already.*confirmed/i.test(inviteError.message);
+    return {
+      ok: false,
+      error: alreadyAccepted
+        ? "This team member already accepted their invite - no need to resend."
+        : inviteError.message,
+    };
+  }
+
+  return { ok: true };
+}
+
+// Covers invites that succeeded on the Supabase auth side (the account
+// exists, email went out) but never got a matching team_members row - e.g.
+// the insert step failed or errored silently right after the invite call.
+// Those accounts are otherwise invisible anywhere in the owner portal even
+// though the person can already log in, so this surfaces and reconciles
+// them instead of leaving a permanent orphan.
+export async function linkOrphanedTeamMember(userId: string): Promise<ActionResult> {
+  const admin = supabaseAdmin();
+
+  const { data: existingOwner } = await admin.from("owners").select("id").eq("id", userId).maybeSingle();
+  if (existingOwner) {
+    return { ok: false, error: "This account is an owner account, not a team member - nothing to link." };
+  }
+
+  const { data: userData, error: getUserError } = await admin.auth.admin.getUserById(userId);
+  if (getUserError || !userData?.user) {
+    return { ok: false, error: "Auth account not found." };
+  }
+
+  const email = userData.user.email;
+  const fullName = (userData.user.user_metadata?.full_name as string | undefined) ?? email ?? "Unnamed";
+  if (!email) {
+    return { ok: false, error: "This account has no email on file." };
+  }
+
+  const { error: insertError } = await admin.from("team_members").insert({ id: userId, email, full_name: fullName });
+  if (insertError) {
+    return { ok: false, error: insertError.message };
+  }
+
+  return { ok: true };
+}

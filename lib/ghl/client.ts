@@ -18,7 +18,13 @@ export class GhlApiError extends Error {
   }
 }
 
-async function ghlFetch(path: string, init?: RequestInit) {
+// Conversation history pagination (see getConversationMessages) means a
+// single contact page now fires several GHL calls in a row instead of one -
+// confirmed live during testing that this makes a transient 429 burst more
+// likely. Without a retry, a 429 on any one page would silently drop the
+// rest of the thread, which is the same "history disappeared" symptom this
+// pagination fix exists to solve, just from a different cause.
+async function ghlFetch(path: string, init?: RequestInit, attempt = 0): Promise<any> {
   const res = await fetch(`${GHL_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -29,6 +35,12 @@ async function ghlFetch(path: string, init?: RequestInit) {
       ...(init?.headers || {}),
     },
   });
+  if (res.status === 429 && attempt < 3) {
+    const retryAfterHeader = Number(res.headers.get("retry-after"));
+    const delayMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader * 1000 : 500 * (attempt + 1);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return ghlFetch(path, init, attempt + 1);
+  }
   if (!res.ok) {
     const body = await res.text();
     throw new GhlApiError(`GHL API ${path} failed: ${res.status} ${body}`, res.status);
@@ -266,9 +278,27 @@ export type GhlMessage = {
   messageType: string;
 };
 
+// GHL only ever returns one page (~20 messages) per call and signals more
+// history via `nextPage`/`lastMessageId` - a single unparameterized fetch
+// silently truncates any thread longer than that, which is what made
+// conversation history look like it was "being cleared" once a thread grew
+// past the first page. Walk every page so the full history always loads.
 export async function getConversationMessages(conversationId: string): Promise<GhlMessage[]> {
-  const data = await ghlFetch(`/conversations/${conversationId}/messages`);
-  return data.messages?.messages ?? [];
+  const all: GhlMessage[] = [];
+  let lastMessageId: string | undefined;
+  // limit=100 (GHL's max) instead of the ~20 default cuts the round trips
+  // for a long thread roughly 5x, which matters since this now has to walk
+  // every page instead of stopping at the first one.
+  for (let page = 0; page < 20; page++) {
+    const q = new URLSearchParams({ limit: "100" });
+    if (lastMessageId) q.set("lastMessageId", lastMessageId);
+    const data = await ghlFetch(`/conversations/${conversationId}/messages?${q.toString()}`);
+    const msgs: GhlMessage[] = data.messages?.messages ?? [];
+    all.push(...msgs);
+    if (!data.messages?.nextPage || msgs.length === 0) break;
+    lastMessageId = data.messages.lastMessageId;
+  }
+  return all;
 }
 
 // Sends a real outbound SMS or Email to the contact via GHL. Only read

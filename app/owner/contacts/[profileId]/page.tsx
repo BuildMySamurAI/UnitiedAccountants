@@ -13,6 +13,8 @@ import { ContactInfoPanel } from "@/components/console/contact-info-panel";
 import { AssignSelect } from "../../assign-select";
 import { TagsCard } from "./tags-card";
 import { DeleteContactButton } from "./delete-contact-button";
+import { ResendClientInviteButton } from "./resend-client-invite-button";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -34,6 +36,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     .single();
 
   if (!profile) notFound();
+
+  const { data: authUser } = await supabaseAdmin().auth.admin.getUserById(profileId);
+  const inviteConfirmed = Boolean(authUser?.user?.email_confirmed_at);
 
   const [{ data: companies }, { data: teamMembers }] = await Promise.all([
     supabase
@@ -139,10 +144,15 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <div className="line">
               {profile.email}
               {profile.phone ? ` · ${profile.phone}` : ""} · client since {new Date(profile.created_at).getFullYear()}
+              {" · "}
+              <Pill variant={inviteConfirmed ? "g" : "a"} dot>
+                {inviteConfirmed ? "Portal login active" : "Portal login pending"}
+              </Pill>
             </div>
           </div>
           <div className="acts">
             <ClientStatusToggle profileId={profileId} initialStatus={profile.status ?? "Active"} />
+            {!inviteConfirmed && <ResendClientInviteButton profileId={profileId} />}
             {profile.phone && (
               <a className="cbtn ghost" href={`tel:${profile.phone}`}>
                 Call

@@ -349,6 +349,40 @@ export async function deleteTeamMember(teamMemberId: string): Promise<ActionResu
   return { ok: true };
 }
 
+// Same mechanism as resendTeamMemberInvite below, for a client's own portal
+// login instead of a team member's - relevant because the bulk CSV import
+// hit Supabase's email rate limit partway through more than one run, which
+// left a real batch of clients with an account that was created but never
+// actually got an invite email.
+export async function resendClientInvite(profileId: string): Promise<ActionResult> {
+  const admin = supabaseAdmin();
+
+  const { data: profile, error: lookupError } = await admin
+    .from("profiles")
+    .select("email, first_name, last_name")
+    .eq("id", profileId)
+    .single();
+
+  if (lookupError || !profile?.email) {
+    return { ok: false, error: "Client not found or has no email on file." };
+  }
+
+  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(profile.email, {
+    data: { first_name: profile.first_name, last_name: profile.last_name },
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+  });
+
+  if (inviteError) {
+    const alreadyAccepted = /already.*registered|already.*confirmed/i.test(inviteError.message);
+    return {
+      ok: false,
+      error: alreadyAccepted ? "This client already accepted their invite - no need to resend." : inviteError.message,
+    };
+  }
+
+  return { ok: true };
+}
+
 // Supabase rejects a fresh invite to an email that's already fully
 // registered (confirmed), but for a team member who was invited and never
 // accepted, calling inviteUserByEmail again on the same (still-unconfirmed)

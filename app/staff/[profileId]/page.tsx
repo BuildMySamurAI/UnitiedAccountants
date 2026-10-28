@@ -96,7 +96,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
     <div className="ccard">
       <header>
         <h3>Companies</h3>
-        <span className="hint">{companyList.length} assigned to you</span>
+        <span className="hint">{companyList.length} {companyList.length === 1 ? "company" : "companies"}</span>
       </header>
       {companyList.length === 0 && <EmptyState title="No companies assigned yet" />}
       {companyList.map((c) => (
@@ -114,7 +114,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
 
   return (
     <>
-      <ConsoleTopBar searchAction="/staff" crumbs={[{ label: "My Clients", href: "/staff" }, { label: name }]} />
+      <ConsoleTopBar searchAction="/staff" crumbs={[{ label: "Clients", href: "/staff" }, { label: name }]} />
       <div className="wrap">
         <div className="hero">
           <Avatar name={name} id={profile.id} size="lg" />

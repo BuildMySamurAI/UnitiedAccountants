@@ -43,7 +43,7 @@ export default async function StaffCommunicationPage() {
       <ConsoleTopBar searchAction="/staff" crumbs={[{ label: "Communication" }]} />
       <div className="wrap">
         <h2 className="page">Communication</h2>
-        <p className="sub">Conversations for clients with a company assigned to you.</p>
+        <p className="sub">Conversations for all clients.</p>
 
         <div className="ccard">
           <header>

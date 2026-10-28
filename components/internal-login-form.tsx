@@ -97,6 +97,11 @@ export function InternalLoginForm() {
             <Button type="submit" disabled={submitting} className="w-full">
               {submitting ? "Signing in..." : "Sign in"}
             </Button>
+                        <p className="text-center text-sm">
+              <a href="/auth/forgot-password" className="text-emerald-700 hover:underline">
+                Forgot password?
+              </a>
+            </p>
           </form>
         </Card>
       </div>

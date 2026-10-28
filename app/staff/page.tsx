@@ -5,20 +5,41 @@ import { ConsoleTopBar, Avatar, MultiEntityBadge, EmptyState } from "@/component
 export default async function StaffClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; mine?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, mine } = await searchParams;
+  const onlyMine = mine === "1";
   const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const myId = user?.id ?? "";
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, email, companies(id)")
+    .select(
+      "id, first_name, last_name, email, companies(id, assigned_team_member_id, bookkeeping_assigned_team_member_id, sales_tax_assigned_team_member_id, payroll_rt_assigned_team_member_id, income_tax_assigned_team_member_id)"
+    )
     .order("created_at", { ascending: false });
 
-  // profiles itself isn't scoped by assignment, only the embedded companies
-  // join is (via RLS) - drop anyone with zero assigned companies so this
-  // list, and every link on it, stays within this team member's scope.
-  const assigned = profiles?.filter((p) => (p.companies?.length ?? 0) > 0);
+  // Every team member sees every client. "Assigned to me" narrows to clients
+  // with a company assigned to this person (company-level or any service).
+  const isMine = (c: {
+    assigned_team_member_id: string | null;
+    bookkeeping_assigned_team_member_id: string | null;
+    sales_tax_assigned_team_member_id: string | null;
+    payroll_rt_assigned_team_member_id: string | null;
+    income_tax_assigned_team_member_id: string | null;
+  }) =>
+    [
+      c.assigned_team_member_id,
+      c.bookkeeping_assigned_team_member_id,
+      c.sales_tax_assigned_team_member_id,
+      c.payroll_rt_assigned_team_member_id,
+      c.income_tax_assigned_team_member_id,
+    ].includes(myId);
+
+  const assigned = onlyMine ? profiles?.filter((p) => (p.companies ?? []).some(isMine)) : profiles;
 
   const filtered = q
     ? assigned?.filter((p) => {
@@ -29,10 +50,15 @@ export default async function StaffClientsPage({
 
   return (
     <>
-      <ConsoleTopBar crumbs={[{ label: "My Clients" }]} searchAction="/staff" searchDefault={q} searchPlaceholder="Search your clients..." />
+      <ConsoleTopBar crumbs={[{ label: "Clients" }]} searchAction="/staff" searchDefault={q} searchPlaceholder="Search clients..." />
       <div className="wrap">
-        <h2 className="page">My Clients</h2>
-        <p className="sub">{filtered?.length ?? 0} clients with companies assigned to you.</p>
+        <h2 className="page">Clients</h2>
+        <p className="sub">
+          {filtered?.length ?? 0} {onlyMine ? "clients assigned to you." : "clients."}{" "}
+          <Link href={onlyMine ? "/staff" : "/staff?mine=1"} style={{ color: "var(--green, #047857)", textDecoration: "underline" }}>
+            {onlyMine ? "Show all clients" : "Assigned to me"}
+          </Link>
+        </p>
 
         {error && (
           <p style={{ fontSize: 13, color: "var(--red)", background: "var(--red-soft)", borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>

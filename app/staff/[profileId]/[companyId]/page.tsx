@@ -160,7 +160,7 @@ export default async function StaffCompanyPage({
       <ConsoleTopBar
         searchAction="/staff"
         crumbs={[
-          { label: "My Clients", href: "/staff" },
+          { label: "Clients", href: "/staff" },
           { label: clientName, href: `/staff/${profileId}` },
           { label: businessName },
         ]}

@@ -287,6 +287,14 @@ export async function deleteContact(profileId: string): Promise<ActionResult> {
 
 export async function deleteTeamMember(teamMemberId: string): Promise<ActionResult> {
   const admin = supabaseAdmin();
+  
+  // The owner also has a team_members row (so they can be assigned work), but
+  // deleting that row below would also delete their auth login. Never do that
+  // for an owner.
+  const { data: ownerRow } = await admin.from("owners").select("id").eq("id", teamMemberId).maybeSingle();
+  if (ownerRow) {
+    return { ok: false, error: "This person is an owner and can't be removed from the team page." };
+  }
 
   // Matches on the company-level assignment OR any of the 4 service
   // assignments - a team member can be independently assigned to a service

@@ -16,6 +16,11 @@ export default function AuthCallbackPage() {
     // Managers have one extra step (personal details) before password setup
     // - everyone else goes straight to /auth/set-password as before.
     async function nextStep(supabase: ReturnType<typeof supabaseBrowser>): Promise<string> {
+            // A password-reset link (from /auth/forgot-password) only needs a new
+      // password - skip the manager details step used for first-time invites.
+      if (new URLSearchParams(window.location.search).get("type") === "recovery") {
+        return "/auth/set-password";
+      }
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -56,7 +61,7 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      setError("This invite link is invalid or has expired.");
+      setError("This link is invalid or has expired.");
     }
 
     run();

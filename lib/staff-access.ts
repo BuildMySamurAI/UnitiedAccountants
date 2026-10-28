@@ -23,10 +23,13 @@ export function staffAssignmentContext(company: AssignmentColumns, staffId: stri
 // undefined service = general/shared, always visible. The company-level
 // assignee is an overseer and sees every service regardless of their
 // individual service assignments.
+// 29 Oct (UA F1): every team member now sees and edits every client, so this
+// no longer narrows by assignment. The assignment context is still computed
+// so this can be re-tightened in one place if Randy asks for view-only.
 export function canSeeService(service: AssignableServiceKey | undefined, ctx: StaffAssignmentContext): boolean {
-  if (!service) return true;
-  if (ctx.isCompanyLevelAssignee) return true;
-  return ctx.assignedServices.has(service);
+  void service;
+  void ctx;
+  return true;
 }
 
 const BOOKKEEPING_DOCUMENT_KEYS = new Set<string>([

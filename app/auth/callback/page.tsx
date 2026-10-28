@@ -51,6 +51,20 @@ export default function AuthCallbackPage() {
       }
 
       const code = new URLSearchParams(window.location.search).get("code");
+            const search = new URLSearchParams(window.location.search);
+
+      // The Supabase client exchanges ?code= by itself as soon as it starts, then
+      // removes the code from the URL. Exchanging it a second time fails with
+      // "PKCE code verifier not found", so check for that session first.
+      if (code || search.get("type") === "recovery") {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          router.replace(await nextStep(supabase));
+          return;
+        }
+      }
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {

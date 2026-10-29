@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { updateTask } from "@/lib/tasks-actions";
+import { updateTask, deleteTask } from "@/lib/tasks-actions";
 import { TaskDocumentUploader } from "./task-document-uploader";
 import { TASK_STATUSES, type TaskStatus } from "@/lib/tasks";
 import { parseDateOnly } from "@/lib/service-deadlines";
@@ -45,6 +45,36 @@ export function TaskRow({
   const [deadline, setDeadline] = useState(task.deadline_date ?? "");
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(task.title);
+  const [requiredDraft, setRequiredDraft] = useState<"yes" | "no">(task.required ? "yes" : "no");
+  const [error, setError] = useState<string | null>(null);
+
+  async function saveEdits() {
+    setSaving(true);
+    setError(null);
+    const result = await updateTask(task.id, { title: titleDraft, required: requiredDraft === "yes" });
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setEditing(false);
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete the task "${task.title}"? This can't be undone.`)) return;
+    setSaving(true);
+    setError(null);
+    const result = await deleteTask(task.id);
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
 
   async function save(fields: Parameters<typeof updateTask>[1]) {
     setSaving(true);
@@ -119,12 +149,65 @@ export function TaskRow({
 
         <Pill variant={statusVariant[task.status]}>{task.status}</Pill>
 
+        {canManage && (
+          <>
+            <button
+              onClick={() => {
+                setTitleDraft(task.title);
+                setRequiredDraft(task.required ? "yes" : "no");
+                setEditing((v) => !v);
+              }}
+              disabled={saving}
+              className="cbtn ghost"
+              style={{ fontSize: 11, padding: "5px 10px" }}
+            >
+              {editing ? "Cancel edit" : "Edit"}
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={saving}
+              className="cbtn ghost"
+              style={{ fontSize: 11, padding: "5px 10px", color: "var(--red)" }}
+            >
+              Delete
+            </button>
+          </>
+        )}
+
         {task.company_id && (
           <button onClick={() => setExpanded((v) => !v)} className="cbtn ghost" style={{ fontSize: 11, padding: "5px 10px" }}>
             {expanded ? "Hide documents" : `Documents (${documents.length})`}
           </button>
         )}
       </div>
+
+      {editing && canManage && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+          <input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            maxLength={60}
+            aria-label="Task title"
+            style={{ flex: "1 1 220px", fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          />
+          <select
+            value={requiredDraft}
+            onChange={(e) => setRequiredDraft(e.target.value as "yes" | "no")}
+            aria-label="Required"
+            style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
+          >
+            <option value="yes">Required</option>
+            <option value="no">Not required</option>
+          </select>
+          <button onClick={saveEdits} disabled={saving} className="cbtn" style={{ fontSize: 11, padding: "5px 10px" }}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>{error}</div>
+      )}
 
       {task.completed_at && (
         <div className="y" style={{ marginTop: 4 }}>

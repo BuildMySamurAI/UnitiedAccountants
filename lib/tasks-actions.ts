@@ -80,26 +80,62 @@ export async function addTask(input: {
 // owns it or when it's due is an owner-only decision.
 export async function updateTask(
   taskId: string,
-  fields: { status?: TaskStatus; assignedTo?: string | null; deadlineDate?: string }
+  fields: {
+    status?: TaskStatus;
+    assignedTo?: string | null;
+    deadlineDate?: string;
+    title?: string;
+    required?: boolean;
+  }
 ): Promise<ActionResult> {
   const supabase = await supabaseServer();
 
-  if (fields.assignedTo !== undefined || fields.deadlineDate !== undefined) {
+  if (
+    fields.assignedTo !== undefined ||
+    fields.deadlineDate !== undefined ||
+    fields.title !== undefined ||
+    fields.required !== undefined
+  ) {
     const denied = await requireOwner(supabase);
     if (denied) return { ok: false, error: denied };
   }
 
-  const update: Record<string, string | null> = { updated_at: new Date().toISOString() };
+  if (fields.title !== undefined && !fields.title.trim()) {
+    return { ok: false, error: "Title can't be empty." };
+  }
+
+  const update: Record<string, string | boolean | null> = { updated_at: new Date().toISOString() };
   if (fields.status !== undefined) {
     update.status = fields.status;
     if (fields.status === "Complete") update.completed_at = todayDateOnly();
   }
   if (fields.assignedTo !== undefined) update.assigned_to = fields.assignedTo || null;
   if (fields.deadlineDate !== undefined) update.deadline_date = fields.deadlineDate || null;
+  if (fields.title !== undefined) update.title = fields.title.trim().slice(0, 60);
+  if (fields.required !== undefined) update.required = fields.required;
 
   const { error } = await supabase.from("tasks").update(update).eq("id", taskId);
 
   if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// Owner-only, like every other change to who does what. Attached documents
+// go first so a task is never left half-deleted; their files stay in
+// storage, which is harmless. `.select()` on the delete is what lets us
+// tell "deleted" apart from "matched nothing" (row-level security filters
+// silently rather than erroring).
+export async function deleteTask(taskId: string): Promise<ActionResult> {
+  const supabase = await supabaseServer();
+  const denied = await requireOwner(supabase);
+  if (denied) return { ok: false, error: denied };
+
+  const { error: docsError } = await supabase.from("task_documents").delete().eq("task_id", taskId);
+  if (docsError) return { ok: false, error: docsError.message };
+
+  const { data, error } = await supabase.from("tasks").delete().eq("id", taskId).select("id");
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "Task not found, or you don't have permission to delete it." };
   return { ok: true };
 }
 

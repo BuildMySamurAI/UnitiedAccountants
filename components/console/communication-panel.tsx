@@ -6,6 +6,8 @@ import { sendContactMessage } from "@/lib/ghl/conversation-actions";
 import { EmptyState } from "@/components/console/ui";
 import type { GhlMessage } from "@/lib/ghl/client";
 
+type SendFn = (type: "SMS" | "Email", message: string, subject?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+
 function channelFor(messageType: string): { label: string; cls: string } {
   if (messageType.includes("EMAIL")) return { label: "email", cls: "eml" };
   if (messageType.includes("SMS") || messageType.includes("PHONE")) return { label: "sms", cls: "sms" };
@@ -24,7 +26,9 @@ function isSystemActivity(messageType: string): boolean {
   return messageType.startsWith("TYPE_ACTIVITY");
 }
 
-export function CommunicationPanel({ contactId, messages }: { contactId: string; messages: GhlMessage[] }) {
+// `send` lets a caller swap in its own (e.g. owner-only) reply action; the
+// default is the shared per-contact send the client pages already use.
+export function CommunicationPanel({ contactId, messages, send }: { contactId: string; messages: GhlMessage[]; send?: SendFn }) {
   const router = useRouter();
   const [channel, setChannel] = useState<"SMS" | "Email">("SMS");
   const [text, setText] = useState("");
@@ -36,7 +40,8 @@ export function CommunicationPanel({ contactId, messages }: { contactId: string;
     if (!text.trim()) return;
     setSending(true);
     setError(null);
-    const result = await sendContactMessage(contactId, channel, text, channel === "Email" ? subject : undefined);
+    const subjectArg = channel === "Email" ? subject : undefined;
+    const result = send ? await send(channel, text, subjectArg) : await sendContactMessage(contactId, channel, text, subjectArg);
     setSending(false);
     if (!result.ok) {
       setError(result.error);

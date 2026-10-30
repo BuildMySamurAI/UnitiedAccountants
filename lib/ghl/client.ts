@@ -248,12 +248,16 @@ export type GhlConversation = {
   id: string;
   contactId: string;
   contactName?: string;
+  fullName?: string;
   email?: string;
   lastMessageBody?: string;
   lastMessageDate?: number;
   lastMessageType?: string;
   lastMessageDirection?: "inbound" | "outbound";
   unreadCount?: number;
+  phone?: string;
+  // [lastMessageDate] - the cursor GHL expects as startAfterDate for the next page.
+  sort?: number[];
 };
 
 // Conversations belong to the GHL contact (person), not to an opportunity -
@@ -267,6 +271,47 @@ export async function searchConversations(params?: { contactId?: string; limit?:
   if (params?.contactId) q.set("contactId", params.contactId);
   const data = await ghlFetch(`/conversations/search?${q.toString()}`);
   return data.conversations ?? [];
+}
+
+// A single search call returns at most 100 conversations (this location has
+// more than that), so an unscoped list - the owner Inbox - has to walk pages
+// via startAfterDate = the `sort` value of the last row. maxPages bounds the
+// number of GHL calls per page view so a big inbox can't fan into a 429 storm.
+export async function searchAllConversations(maxPages = 5): Promise<{ conversations: GhlConversation[]; truncated: boolean }> {
+  const all: GhlConversation[] = [];
+  let cursor: number | undefined;
+  let truncated = false;
+  for (let page = 0; page < maxPages; page++) {
+    const q = new URLSearchParams({ locationId: GHL_LOCATION_ID, limit: "100", sort: "desc" });
+    if (cursor !== undefined) q.set("startAfterDate", String(cursor));
+    const data = await ghlFetch(`/conversations/search?${q.toString()}`);
+    const batch: GhlConversation[] = data.conversations ?? [];
+    all.push(...batch);
+    const next = batch[batch.length - 1]?.sort?.[0];
+    if (batch.length < 100 || next === undefined) return { conversations: all, truncated };
+    cursor = next;
+    if (page === maxPages - 1) truncated = true;
+  }
+  return { conversations: all, truncated };
+}
+
+export async function getConversation(conversationId: string): Promise<GhlConversation | null> {
+  try {
+    const data = await ghlFetch(`/conversations/${conversationId}`);
+    return data.id ? data : data.conversation ?? null;
+  } catch (err) {
+    if (err instanceof GhlApiError && (err.status === 404 || err.status === 400)) return null;
+    throw err;
+  }
+}
+
+// Clears the conversation's unread badge in GHL itself (Update Conversation,
+// scope conversations.write) - GHL is the only place read state lives.
+export async function markConversationRead(conversationId: string) {
+  return ghlFetch(`/conversations/${conversationId}`, {
+    method: "PUT",
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, unreadCount: 0 }),
+  });
 }
 
 export type GhlMessage = {

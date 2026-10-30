@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { searchConversations } from "@/lib/ghl/client";
+import { searchAllConversations } from "@/lib/ghl/client";
 import { ConsoleTopBar, EmptyState } from "@/components/console/ui";
 
 function channelFor(type?: string): { label: string; cls: string } {
@@ -18,8 +18,8 @@ function channelFor(type?: string): { label: string; cls: string } {
 export default async function CommunicationPage() {
   const supabase = await supabaseServer();
 
-  const [conversations, { data: profiles }] = await Promise.all([
-    searchConversations().catch(() => []),
+  const [{ conversations, truncated }, { data: profiles }] = await Promise.all([
+    searchAllConversations().catch(() => ({ conversations: [], truncated: false })),
     supabase.from("profiles").select("id, first_name, last_name, ghl_contact_id"),
   ]);
 
@@ -37,7 +37,9 @@ export default async function CommunicationPage() {
         <div className="ccard">
           <header>
             <h3>Inbox</h3>
-            <span className="hint">{sorted.length} conversations</span>
+            <span className="hint">
+              {sorted.length} conversations{truncated ? " (most recent shown)" : ""}
+            </span>
           </header>
           <table>
             <thead>
@@ -54,16 +56,13 @@ export default async function CommunicationPage() {
                 const name = profile ? `${profile.first_name} ${profile.last_name}`.trim() : c.contactName || c.email || "Unknown contact";
                 const ch = channelFor(c.lastMessageType);
                 return (
-                  <tr key={c.id} className={profile ? "click" : undefined}>
+                  <tr key={c.id} className="click">
                     <td>
                       <div className="name">
-                        {profile ? (
-                          <Link href={`/owner/contacts/${profile.id}`} style={{ color: "inherit" }}>
-                            {name}
-                          </Link>
-                        ) : (
-                          name
-                        )}
+                        <Link href={`/owner/communication/${c.id}`} style={{ color: "inherit" }}>
+                          {name}
+                        </Link>
+                        {!profile && <span className="cpill n" style={{ padding: "1px 6px", fontSize: 9.5 }}>not a client</span>}
                         {(c.unreadCount ?? 0) > 0 && (
                           <span className="cpill b" style={{ padding: "1px 6px", fontSize: 9.5 }}>
                             new

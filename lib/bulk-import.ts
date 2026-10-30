@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { upsertContact, createOpportunity, type GhlCustomFieldWrite } from "@/lib/ghl/client";
+import { upsertContact, createOpportunity, addContactTags, type GhlCustomFieldWrite } from "@/lib/ghl/client";
+import { resolveAllowedTags } from "@/lib/tags";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { provisionPortalForOpportunity } from "@/lib/onboarding";
 import { PERSONAL_FILER_VALUE, validEntityTypesFor } from "@/lib/company-type";
@@ -30,6 +31,7 @@ export const IMPORT_TEMPLATE_HEADER = [
   "Payroll/RT",
   "Income Tax",
   "EIN",
+  "Tags",
 ] as const;
 
 // Dependency-free RFC4180-ish CSV parser - handles quoted fields (commas,
@@ -106,6 +108,9 @@ export type ParsedImportRow = {
   entityType: string;
   services: string[];
   ein: string;
+  // Raw names from the semicolon-separated Tags cell; checked against the
+  // allowed GHL list in processImportRow, not here.
+  tags: string[];
 };
 
 export type ImportRowError = { rowNumber: number; error: string };
@@ -161,6 +166,7 @@ export function parseImportRows(csvText: string): { rows: ParsedImportRow[]; err
       payrollRtRaw,
       incomeTaxRaw,
       einRaw,
+      tagsRaw,
     ] = cols.map((c) => (c ?? "").trim());
 
     if (!firstName || !lastName || !email || !businessName) {
@@ -196,6 +202,7 @@ export function parseImportRows(csvText: string): { rows: ParsedImportRow[]; err
       entityType,
       services,
       ein: (einRaw ?? "").trim(),
+      tags: (tagsRaw ?? "").split(";").map((t) => t.trim()).filter(Boolean),
     });
   });
 
@@ -213,14 +220,41 @@ export type ImportRowResult =
 // duplicate-email pre-check, since a matched email here means "skip this
 // row" rather than "add another company under their existing profile" (the
 // behavior provisionPortalForOpportunity would otherwise give it).
-export async function processImportRow(supabase: SupabaseClient, row: ParsedImportRow): Promise<ImportRowResult> {
+// allowedTags is the fixed selectable GHL tag list, or null if it couldn't be
+// read - in which case any row that asks for tags fails rather than guessing.
+export async function processImportRow(
+  supabase: SupabaseClient,
+  row: ParsedImportRow,
+  allowedTags: string[] | null = null
+): Promise<ImportRowResult> {
   const { data: existing } = await supabase.from("profiles").select("id").eq("email", row.email).maybeSingle();
   if (existing) {
     return { rowNumber: row.rowNumber, status: "skipped", businessName: row.businessName, email: row.email, reason: "A client with this email already exists." };
   }
 
+  // Checked before any write so a bad tag fails the whole row cleanly
+  // instead of leaving a half-imported client.
+  let tags: string[] = [];
+  if (row.tags.length > 0) {
+    if (!allowedTags) {
+      return { rowNumber: row.rowNumber, status: "failed", businessName: row.businessName, email: row.email, error: "Couldn't load the tag list from GHL, so Tags can't be checked. Try again." };
+    }
+    const resolved = resolveAllowedTags(row.tags, allowedTags);
+    if (!resolved.ok) {
+      return {
+        rowNumber: row.rowNumber,
+        status: "failed",
+        businessName: row.businessName,
+        email: row.email,
+        error: `Unknown tag(s): ${resolved.unknown.join(", ")}. Allowed: ${allowedTags.join("; ") || "none"}.`,
+      };
+    }
+    tags = resolved.tags;
+  }
+
   try {
     const { contact } = await upsertContact({ firstName: row.firstName, lastName: row.lastName, email: row.email, phone: row.phone });
+    if (tags.length > 0) await addContactTags(contact.id, tags);
 
     const customFields: GhlCustomFieldWrite[] = [
       { id: OPPORTUNITY_FIELDS.businessName, field_value: row.businessName },

@@ -456,3 +456,10 @@ export async function addContactTags(contactId: string, tags: string[]) {
     body: JSON.stringify({ tags }),
   });
 }
+
+// Every tag defined on the location (not just ones currently on a contact).
+// Read-only - nothing here creates or deletes tags.
+export async function getLocationTags(): Promise<string[]> {
+  const data = await ghlFetch(`/locations/${GHL_LOCATION_ID}/tags`);
+  return (data.tags ?? []).map((t: { name: string }) => t.name);
+}

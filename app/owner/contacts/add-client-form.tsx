@@ -6,9 +6,10 @@ import { addClientManually } from "./add-client-actions";
 import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 
-export function AddClientForm() {
+export function AddClientForm({ availableTags }: { availableTags: string[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,6 +25,7 @@ export function AddClientForm() {
       businessName: String(formData.get("businessName") || ""),
       mailingAddress: String(formData.get("mailingAddress") || ""),
       physicalAddress: String(formData.get("physicalAddress") || ""),
+      tags: [...selectedTags],
     });
 
     setSubmitting(false);
@@ -59,6 +61,43 @@ export function AddClientForm() {
           <Field name="businessName" label="Business Name" required />
           <Field name="mailingAddress" label="Mailing Address" />
           <Field name="physicalAddress" label="Physical Address" />
+        </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Tags</div>
+          {availableTags.length === 0 ? (
+            <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>No tags available.</span>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {availableTags.map((t) => {
+                const on = selectedTags.has(t);
+                return (
+                  <button
+                    type="button"
+                    key={t}
+                    className="ctag"
+                    aria-pressed={on}
+                    disabled={submitting}
+                    onClick={() =>
+                      setSelectedTags((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(t)) next.delete(t);
+                        else next.add(t);
+                        return next;
+                      })
+                    }
+                    style={{
+                      cursor: "pointer",
+                      background: on ? "var(--green-soft, #e4efe9)" : undefined,
+                      borderColor: on ? "var(--green)" : undefined,
+                    }}
+                  >
+                    {on ? "✓ " : ""}
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Button type="submit" disabled={submitting}>

@@ -31,7 +31,7 @@ export default function BulkImportPage() {
           <div style={{ padding: "14px 15px", fontSize: 13, color: "var(--ink-3)" }}>
             <p style={{ margin: 0, fontFamily: "var(--console-font-mono)", fontSize: 11.5 }}>
               First Name, Last Name, Email, Phone, Business Name, Mailing Address, Physical Address, Type, Entity
-              Type, Bookkeeping, Sales Tax, Payroll/RT, Income Tax, EIN
+              Type, Bookkeeping, Sales Tax, Payroll/RT, Income Tax, EIN, Tags
             </p>
             <ul style={{ margin: "10px 0 0", paddingLeft: 18 }}>
               <li>
@@ -48,6 +48,10 @@ export default function BulkImportPage() {
               <li>
                 <b>EIN</b> - optional, only if already on file. SSN is deliberately not a column here - add it per
                 client through the company page after import, where it&apos;s masked and every view is logged.
+              </li>
+              <li>
+                <b>Tags</b> - optional, separate several with a semicolon (e.g. <code>payroll;sales tax</code>). Only
+                tags that already exist in GHL are accepted; an unknown tag fails that row.
               </li>
             </ul>
           </div>

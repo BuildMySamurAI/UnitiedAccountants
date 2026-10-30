@@ -1,6 +1,7 @@
 "use server";
 
-import { upsertContact, createOpportunity } from "@/lib/ghl/client";
+import { upsertContact, createOpportunity, addContactTags } from "@/lib/ghl/client";
+import { getSelectableTags, resolveAllowedTags } from "@/lib/tags";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { provisionPortalForOpportunity } from "@/lib/onboarding";
 
@@ -21,6 +22,7 @@ export async function addClientManually(input: {
   businessName: string;
   mailingAddress?: string;
   physicalAddress?: string;
+  tags?: string[];
 }): Promise<AddClientResult> {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
@@ -32,7 +34,19 @@ export async function addClientManually(input: {
   }
 
   try {
+    // Validated before anything is written, so a bad tag can't leave a
+    // half-created client behind. Only tags on the fixed GHL list are allowed.
+    let tags: string[] = [];
+    if (input.tags?.length) {
+      const resolved = resolveAllowedTags(input.tags, await getSelectableTags());
+      if (!resolved.ok) {
+        return { ok: false, error: `Unknown tag(s): ${resolved.unknown.join(", ")}.` };
+      }
+      tags = resolved.tags;
+    }
+
     const { contact } = await upsertContact({ firstName, lastName, email, phone: input.phone?.trim() });
+    if (tags.length > 0) await addContactTags(contact.id, tags);
 
     const opportunity = await createOpportunity({
       contactId: contact.id,

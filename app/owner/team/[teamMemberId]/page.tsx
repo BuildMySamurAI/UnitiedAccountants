@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { ConsoleTopBar, Avatar, EmptyState } from "@/components/console/ui";
 import { UnassignButton } from "./unassign-button";
 import { DeleteTeamMemberButton } from "./delete-team-member-button";
+import { SendResetButton } from "./send-reset-button";
 
 export default async function TeamMemberDetailPage({ params }: { params: Promise<{ teamMemberId: string }> }) {
   const { teamMemberId } = await params;
@@ -38,6 +39,7 @@ export default async function TeamMemberDetailPage({ params }: { params: Promise
             </div>
           </div>
           <div className="acts">
+            <SendResetButton teamMemberId={teamMemberId} />
             <DeleteTeamMemberButton teamMemberId={teamMemberId} name={teamMember.full_name} companyCount={companyList.length} />
           </div>
         </div>

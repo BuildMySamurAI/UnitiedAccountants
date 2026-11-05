@@ -2,6 +2,7 @@
 
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { createClient } from "@supabase/supabase-js";
 import {
   updateOpportunityCustomFields,
   deleteOpportunity,
@@ -425,6 +426,60 @@ export async function resendTeamMemberInvite(teamMemberId: string): Promise<Acti
   }
 
   return { ok: true };
+}
+
+// Owner-triggered "Forgot password?" for a team member. Uses an implicit-flow,
+// non-persisting client on purpose: the default PKCE flow would store the code
+// verifier in the *owner's* cookies, so the link would fail with "PKCE code
+// verifier not found" when the staff member opens it in their own browser.
+// Implicit flow delivers tokens in the URL fragment, which /auth/callback
+// already handles.
+export async function sendTeamMemberPasswordReset(
+  teamMemberId: string
+): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  const admin = supabaseAdmin();
+
+  const { data: ownerRow } = await admin.from("owners").select("id").eq("id", user.id).maybeSingle();
+  if (!ownerRow) {
+    return { ok: false, error: "Only owners can send password resets." };
+  }
+
+  const { data: teamMember, error: lookupError } = await admin
+    .from("team_members")
+    .select("email")
+    .eq("id", teamMemberId)
+    .maybeSingle();
+
+  if (lookupError || !teamMember?.email) {
+    return { ok: false, error: "Team member not found or has no email on file." };
+  }
+
+  const resetClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { flowType: "implicit", persistSession: false, autoRefreshToken: false } }
+  );
+
+  const { error: resetError } = await resetClient.auth.resetPasswordForEmail(teamMember.email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_INTERNAL_SITE_URL}/auth/callback?type=recovery`,
+  });
+
+  if (resetError) {
+    if (resetError.status === 429) {
+      return { ok: false, error: "Please wait a minute and try again." };
+    }
+    return { ok: false, error: resetError.message };
+  }
+
+  return { ok: true, email: teamMember.email };
 }
 
 // Covers invites that succeeded on the Supabase auth side (the account

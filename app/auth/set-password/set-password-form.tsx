@@ -1,19 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { resolvePostLoginPath } from "@/lib/post-login-redirect";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 
+const GENERIC_ERROR = "Something went wrong - please try again.";
+const REQUEST_TIMEOUT_MS = 15_000;
+
+// Rejects if the request hasn't settled in time, so a stalled network call
+// can never leave the button stuck on "Saving...".
+function withTimeout<T>(promise: PromiseLike<T>, ms = REQUEST_TIMEOUT_MS): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Request timed out")), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export default function SetPasswordForm({ email }: { email: string }) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,29 +42,43 @@ export default function SetPasswordForm({ email }: { email: string }) {
     setSubmitting(true);
     setError(null);
 
-    const supabase = supabaseBrowser();
-    const { error } = await supabase.auth.updateUser({ password });
+    // Stays true only once we have handed off to window.location.assign, so
+    // the button keeps saying "Redirecting..." instead of re-enabling.
+    let handedOff = false;
 
-    if (error) {
-      setError(error.message);
-      setSubmitting(false);
-      return;
+    try {
+      const supabase = supabaseBrowser();
+      const { error } = await withTimeout(supabase.auth.updateUser({ password }));
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser());
+
+      if (user) {
+        // Best-effort - if this fails the account still works, just with a
+        // stale "invite pending" badge on the company's Managers list.
+        try {
+          await withTimeout(supabase.from("managers").update({ status: "active" }).eq("id", user.id));
+        } catch {
+          // Ignore errors and timeouts - this must never block the login.
+        }
+      }
+
+      const path = user ? await withTimeout(resolvePostLoginPath(supabase, user.id)) : "/dashboard";
+
+      handedOff = true;
+      setRedirecting(true);
+      window.location.assign(path);
+    } catch {
+      setError(GENERIC_ERROR);
+    } finally {
+      if (!handedOff) setSubmitting(false);
     }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      // Best-effort - if this fails the account still works, just with a
-      // stale "invite pending" badge on the company's Managers list.
-      await supabase.from("managers").update({ status: "active" }).eq("id", user.id);
-    }
-
-    const path = user ? await resolvePostLoginPath(supabase, user.id) : "/dashboard";
-
-    router.push(path);
-    router.refresh();
   }
 
   return (
@@ -90,7 +116,7 @@ export default function SetPasswordForm({ email }: { email: string }) {
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
             )}
             <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Saving..." : "Create Password"}
+              {redirecting ? "Redirecting..." : submitting ? "Saving..." : "Create Password"}
             </Button>
           </form>
         </Card>

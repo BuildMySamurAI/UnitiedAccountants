@@ -772,6 +772,7 @@
   line-height: 1.5;
   border: 1px solid var(--rule-soft);
   background: #fbfaf6;
+  overflow-wrap: anywhere;
 }
 .console .msg .t {
   font-size: 10px;

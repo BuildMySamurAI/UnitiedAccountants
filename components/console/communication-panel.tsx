@@ -71,7 +71,7 @@ export function CommunicationPanel({ contactId, messages, send }: { contactId: s
               const ch = channelFor(m.messageType);
               return (
                 <div key={m.id} className={`msg ${m.direction === "inbound" ? "in" : "out"}`}>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <div className="b">{m.body}</div>
                     <div className="t">
                       <span className={`ch ${ch.cls}`}>{ch.label}</span>

@@ -127,7 +127,30 @@ export async function getOpportunity(opportunityId: string) {
   return data.opportunity;
 }
 
-export type GhlOpportunitySummary = { id: string; name: string; pipelineStageId: string };
+// Custom field as /opportunities/search returns it (see normalizeSearchCustomFields).
+export type GhlSearchCustomField = {
+  id: string;
+  fieldValueString?: string;
+  fieldValueNumber?: number;
+  fieldValueDate?: number; // epoch ms
+};
+
+// customFields is already present on the raw search rows at runtime; it is
+// typed here (optional) so callers that need it can read it.
+export type GhlOpportunitySummary = { id: string; name: string; pipelineStageId: string; customFields?: GhlSearchCustomField[] };
+
+// Maps the search endpoint's custom fields into the {id, fieldValue} shape that
+// getOpportunity() returns and customFieldValue() reads. DATE fields come back
+// as epoch-ms here but as "YYYY-MM-DD" from the single GET, so convert to that.
+export function normalizeSearchCustomFields(fields: GhlSearchCustomField[] | undefined): { id: string; fieldValue?: string }[] {
+  return (fields ?? []).map((f) => {
+    let fieldValue: string | undefined;
+    if (typeof f.fieldValueString === "string") fieldValue = f.fieldValueString;
+    else if (typeof f.fieldValueDate === "number") fieldValue = new Date(f.fieldValueDate).toISOString().slice(0, 10);
+    else if (typeof f.fieldValueNumber === "number") fieldValue = String(f.fieldValueNumber);
+    return { id: f.id, fieldValue };
+  });
+}
 
 // Paginates through every opportunity in a pipeline (GHL's search endpoint
 // caps out at 100/page) using its startAfter/startAfterId cursor. Deliberately

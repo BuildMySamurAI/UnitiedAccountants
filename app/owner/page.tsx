@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getOpportunity } from "@/lib/ghl/client";
+import { getAllOpportunitiesInPipeline, normalizeSearchCustomFields } from "@/lib/ghl/client";
 import { customFieldValue } from "@/lib/ghl/fields";
-import { OPPORTUNITY_FIELDS, PIPELINE_STAGES } from "@/lib/ghl/constants";
+import { OPPORTUNITY_FIELDS, PIPELINE_NEW_CORP_ONBOARDING, PIPELINE_STAGES } from "@/lib/ghl/constants";
 import { parseDateOnly } from "@/lib/service-deadlines";
 import { ConsoleTopBar, StatCard, EmptyState } from "@/components/console/ui";
 import { ClientRequestsPanel, type ClientRequest } from "@/components/console/client-requests-panel";
@@ -17,25 +17,25 @@ export default async function TodayPage() {
 
   const list = companies ?? [];
 
-  const details = await Promise.all(
-    list.map(async (c) => {
-      try {
-        const opportunity = await getOpportunity(c.ghl_opportunity_id);
-        const cf = opportunity.customFields;
-        return {
-          company: c,
-          stageId: opportunity.pipelineStageId as string,
-          ein: customFieldValue(cf, OPPORTUNITY_FIELDS.ein),
-          reconciliationCompletionDate: customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate),
-          statementsReceived: customFieldValue(cf, OPPORTUNITY_FIELDS.statementsReceived),
-          currentMonth: customFieldValue(cf, OPPORTUNITY_FIELDS.currentMonth),
-          payrollProcessingDate: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollProcessingDate),
-        };
-      } catch {
-        return null;
-      }
-    })
-  );
+  // One paginated pipeline search instead of one GHL call per company. Errors
+  // are deliberately not caught: a failed fetch must not silently shrink counts.
+  const opportunities = await getAllOpportunitiesInPipeline(PIPELINE_NEW_CORP_ONBOARDING);
+  const opportunityById = new Map(opportunities.map((o) => [o.id, o]));
+
+  const details = list.map((c) => {
+    const opportunity = opportunityById.get(c.ghl_opportunity_id);
+    if (!opportunity) return null;
+    const cf = normalizeSearchCustomFields(opportunity.customFields);
+    return {
+      company: c,
+      stageId: opportunity.pipelineStageId as string,
+      ein: customFieldValue(cf, OPPORTUNITY_FIELDS.ein),
+      reconciliationCompletionDate: customFieldValue(cf, OPPORTUNITY_FIELDS.reconciliationCompletionDate),
+      statementsReceived: customFieldValue(cf, OPPORTUNITY_FIELDS.statementsReceived),
+      currentMonth: customFieldValue(cf, OPPORTUNITY_FIELDS.currentMonth),
+      payrollProcessingDate: customFieldValue(cf, OPPORTUNITY_FIELDS.payrollProcessingDate),
+    };
+  });
   const ok = details.filter((d): d is NonNullable<typeof d> => d !== null);
 
   const activeStageId = PIPELINE_STAGES[PIPELINE_STAGES.length - 1].id;

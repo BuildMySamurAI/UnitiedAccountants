@@ -486,3 +486,37 @@ export async function getLocationTags(): Promise<string[]> {
   const data = await ghlFetch(`/locations/${GHL_LOCATION_ID}/tags`);
   return (data.tags ?? []).map((t: { name: string }) => t.name);
 }
+
+export type GhlLocationTag = { id: string; name: string };
+
+// Same list as getLocationTags but keeps the tag id, which rename/delete need.
+export async function listLocationTags(): Promise<GhlLocationTag[]> {
+  const data = await ghlFetch(`/locations/${GHL_LOCATION_ID}/tags`);
+  return (data.tags ?? []).map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }));
+}
+
+// Creates a tag on the location (it is not attached to any contact).
+export async function createLocationTag(name: string): Promise<GhlLocationTag> {
+  const data = await ghlFetch(`/locations/${GHL_LOCATION_ID}/tags`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  const tag = data.tag ?? data;
+  return { id: tag.id, name: tag.name };
+}
+
+// Renames a location tag by id.
+export async function renameLocationTag(id: string, name: string): Promise<GhlLocationTag> {
+  const data = await ghlFetch(`/locations/${GHL_LOCATION_ID}/tags/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ name }),
+  });
+  const tag = data.tag ?? data;
+  return { id: tag.id ?? id, name: tag.name ?? name };
+}
+
+// Deletes a location tag by id. What GHL does to contacts carrying the tag is
+// not documented - callers must warn before using this.
+export async function deleteLocationTag(id: string) {
+  return ghlFetch(`/locations/${GHL_LOCATION_ID}/tags/${id}`, { method: "DELETE" });
+}

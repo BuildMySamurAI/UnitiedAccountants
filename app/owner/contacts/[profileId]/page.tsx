@@ -12,6 +12,7 @@ import { ClientStatusToggle } from "@/components/console/client-status-toggle";
 import { ContactInfoPanel } from "@/components/console/contact-info-panel";
 import { AssignSelect } from "../../assign-select";
 import { TagsCard } from "./tags-card";
+import { getSelectableTags } from "@/lib/tags";
 import { DeleteContactButton } from "./delete-contact-button";
 import { ResendClientInviteButton } from "./resend-client-invite-button";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -68,6 +69,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       tags = [];
     }
   }
+
+  // The fixed pick-list for the Tags card. A GHL failure just means nothing is
+  // offered to pick, not a broken page.
+  const availableTags = await getSelectableTags().catch(() => [] as string[]);
 
   const name = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || profile.email || "Unnamed";
   const companyList = companies ?? [];
@@ -167,7 +172,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {profile.ghl_contact_id && <TagsCard contactId={profile.ghl_contact_id} tags={tags} />}
+        {profile.ghl_contact_id && <TagsCard contactId={profile.ghl_contact_id} tags={tags} availableTags={availableTags} />}
 
         <ContactTabs
           companiesCount={companyList.length}

@@ -12,6 +12,7 @@ import {
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { ASSIGNABLE_SERVICES, type AssignableServiceKey } from "@/lib/service-assignment";
 import { revealCompanySsn, type RevealResult } from "@/lib/ssn-reveal";
+import { getSelectableTags, resolveAllowedTags } from "@/lib/tags";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -186,7 +187,13 @@ export async function addContactTag(contactId: string, tag: string): Promise<Act
   }
 
   try {
-    await addContactTags(contactId, [trimmed]);
+    // Only tags on the fixed GHL list may be added - same check as Add client -
+    // so this can never create a new tag, even if called directly.
+    const resolved = resolveAllowedTags([trimmed], await getSelectableTags());
+    if (!resolved.ok) {
+      return { ok: false, error: `"${trimmed}" isn't on the approved tag list, so it wasn't added.` };
+    }
+    await addContactTags(contactId, resolved.tags);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to add tag" };
   }

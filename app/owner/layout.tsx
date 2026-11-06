@@ -25,7 +25,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     group: "Admin",
-    items: [{ href: "/owner/team", label: "Team", icon: "team" }],
+    items: [
+      { href: "/owner/team", label: "Team", icon: "team" },
+      { href: "/owner/tags", label: "Tags", icon: "docs" },
+    ],
   },
 ];
 

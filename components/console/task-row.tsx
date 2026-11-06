@@ -125,7 +125,13 @@ export function TaskRow({
           <input
             type="date"
             value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setDeadline(next);
+              if (next === "" || (/^\d{4}-\d{2}-\d{2}$/.test(next) && Number(next.slice(0, 4)) >= 2000)) {
+                save({ deadlineDate: next });
+              }
+            }}
             onBlur={() => save({ deadlineDate: deadline })}
             style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--rule)" }}
           />

@@ -111,7 +111,18 @@ export async function updateTask(
   }
   if (fields.assignedTo !== undefined) update.assigned_to = fields.assignedTo || null;
   if (fields.deadlineDate !== undefined) update.deadline_date = fields.deadlineDate || null;
-  if (fields.title !== undefined) update.title = fields.title.trim().slice(0, 60);
+  if (fields.title !== undefined) {
+    const newTitle = fields.title.trim().slice(0, 60);
+    update.title = newTitle;
+
+    const { data: current, error: readError } = await supabase
+      .from("tasks")
+      .select("title, description")
+      .eq("id", taskId)
+      .maybeSingle();
+    if (readError) return { ok: false, error: readError.message };
+    if (current && current.description === current.title) update.description = newTitle;
+  }
   if (fields.required !== undefined) update.required = fields.required;
 
   const { error } = await supabase.from("tasks").update(update).eq("id", taskId);

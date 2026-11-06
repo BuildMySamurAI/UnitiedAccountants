@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getConversation, getConversationMessages } from "@/lib/ghl/client";
+import { getContact, getConversation, getConversationMessages } from "@/lib/ghl/client";
 import { ConsoleTopBar } from "@/components/console/ui";
 import { CommunicationPanel } from "@/components/console/communication-panel";
 import { replyToInboxConversation } from "../actions";
@@ -19,9 +19,28 @@ export default async function InboxConversationPage({ params }: { params: Promis
     supabase.from("profiles").select("id, first_name, last_name").eq("ghl_contact_id", conversation.contactId).maybeSingle(),
   ]);
 
+  // No portal profile: the single-conversation GHL endpoint often omits the
+  // contact's name, so look the contact up directly. Never let a failed or
+  // empty lookup break the page - fall through to the existing chain.
+  let ghlContactName: string | undefined;
+  if (!profile && conversation.contactId) {
+    try {
+      const contact = await getContact(conversation.contactId);
+      const full = `${contact?.firstName ?? ""} ${contact?.lastName ?? ""}`.trim();
+      ghlContactName = contact?.contactName || full || contact?.email || contact?.phone || undefined;
+    } catch {
+      ghlContactName = undefined;
+    }
+  }
+
   const name = profile
     ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()
-    : conversation.contactName || conversation.fullName || conversation.email || conversation.phone || "Unknown contact";
+    : ghlContactName ||
+      conversation.contactName ||
+      conversation.fullName ||
+      conversation.email ||
+      conversation.phone ||
+      "Unknown contact";
 
   return (
     <>

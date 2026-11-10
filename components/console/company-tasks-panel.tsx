@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addTask } from "@/lib/tasks-actions";
 import { TaskRow, type TaskRecord, type TaskDocRecord } from "./task-row";
@@ -17,6 +18,10 @@ export function CompanyTasksPanel({
   teamMembers,
   assignedTeamMember,
   canManage,
+  availableTags,
+  activeTags,
+  basePath,
+  keepParams,
 }: {
   companyId: string;
   tasks: TaskRecord[];
@@ -24,8 +29,13 @@ export function CompanyTasksPanel({
   teamMembers: { id: string; full_name: string }[];
   assignedTeamMember: { id: string; full_name: string } | null;
   canManage: boolean;
+  availableTags: string[];
+  activeTags: string[]; // lower-cased, from ?tasktag=
+  basePath: string; // this company page's own path, for filter links
+  keepParams: [string, string][]; // the services filter's selection, preserved in our links
 }) {
   const router = useRouter();
+  const [newTags, setNewTags] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [required, setRequired] = useState(false);
   const [assignedTo, setAssignedTo] = useState(assignedTeamMember?.id ?? "");
@@ -44,6 +54,7 @@ export function CompanyTasksPanel({
       required,
       assignedTo: assignedTo || undefined,
       deadlineDate: deadline || undefined,
+      tags: newTags,
       createdBy: "team",
     });
     setAdding(false);
@@ -52,7 +63,19 @@ export function CompanyTasksPanel({
       return;
     }
     setDescription("");
+    setNewTags([]);
     router.refresh();
+  }
+
+  const shown =
+    activeTags.length > 0 ? tasks.filter((t) => (t.tags ?? []).some((x) => activeTags.includes(x.toLowerCase()))) : tasks;
+
+  function hrefFor(nextTags: string[]): string {
+    const params = new URLSearchParams();
+    for (const [k, v] of keepParams) params.append(k, v);
+    for (const n of nextTags) params.append("tasktag", n);
+    const qs = params.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
   }
 
   return (
@@ -62,10 +85,52 @@ export function CompanyTasksPanel({
         <span className="hint">internal only - not visible to the client</span>
       </header>
 
+      {availableTags.length > 0 && (
+        <div style={{ padding: "12px 15px", borderBottom: "1px solid var(--rule-soft)" }}>
+          <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>
+            Filter by tag - matches any selected
+            {activeTags.length > 0 && (
+              <>
+                {" · "}
+                <Link href={hrefFor([])}>clear</Link>
+              </>
+            )}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {availableTags.map((t) => {
+              const on = activeTags.includes(t.toLowerCase());
+              const next = on ? activeTags.filter((a) => a !== t.toLowerCase()) : [...activeTags, t.toLowerCase()];
+              return (
+                <Link
+                  key={t}
+                  href={hrefFor(next)}
+                  className="ctag"
+                  style={{
+                    background: on ? "var(--green-soft, #e4efe9)" : undefined,
+                    borderColor: on ? "var(--green)" : undefined,
+                  }}
+                >
+                  {on ? "✓ " : ""}
+                  {t}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: "12px 15px" }}>
         {tasks.length === 0 && <EmptyState title="No tasks tracked yet" />}
-        {tasks.map((t) => (
-          <TaskRow key={t.id} task={t} documents={documentsByTask[t.id] ?? []} assignableTeamMembers={teamMembers} canManage={canManage} />
+        {tasks.length > 0 && shown.length === 0 && <EmptyState title="No tasks match the selected tags" />}
+        {shown.map((t) => (
+          <TaskRow
+            key={t.id}
+            task={t}
+            documents={documentsByTask[t.id] ?? []}
+            assignableTeamMembers={teamMembers}
+            canManage={canManage}
+            availableTags={availableTags}
+          />
         ))}
       </div>
 
@@ -114,6 +179,30 @@ export function CompanyTasksPanel({
           <button onClick={handleAdd} disabled={adding} className="cbtn">
             {adding ? "Adding..." : "+ Add task"}
           </button>
+
+          {availableTags.length > 0 && (
+            <div style={{ flexBasis: "100%", display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {availableTags.map((t) => {
+                const on = newTags.includes(t);
+                return (
+                  <button
+                    type="button"
+                    key={t}
+                    className="ctag"
+                    onClick={() => setNewTags(on ? newTags.filter((x) => x !== t) : [...newTags, t])}
+                    style={{
+                      cursor: "pointer",
+                      background: on ? "var(--green-soft, #e4efe9)" : undefined,
+                      borderColor: on ? "var(--green)" : undefined,
+                    }}
+                  >
+                    {on ? "✓ " : "+ "}
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
       {error && <p style={{ fontSize: 11.5, color: "var(--red)", padding: "0 15px 10px" }}>{error}</p>}

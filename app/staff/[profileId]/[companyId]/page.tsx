@@ -39,11 +39,12 @@ export default async function StaffCompanyPage({
   searchParams,
 }: {
   params: Promise<{ profileId: string; companyId: string }>;
-  searchParams: Promise<{ tag?: string | string[] }>;
+  searchParams: Promise<{ tag?: string | string[]; tasktag?: string | string[] }>;
 }) {
   const { profileId, companyId } = await params;
-  const { tag } = await searchParams;
+  const { tag, tasktag } = await searchParams;
   const activeTags = (Array.isArray(tag) ? tag : tag ? [tag] : []).map((t) => t.toLowerCase());
+  const activeTaskTags = (Array.isArray(tasktag) ? tasktag : tasktag ? [tasktag] : []).map((t) => t.toLowerCase());
   const availableTags = await getSelectableTags().catch(() => [] as string[]);
   const supabase = await supabaseServer();
   const {
@@ -130,7 +131,7 @@ export default async function StaffCompanyPage({
 
   const { data: tasks } = await supabase
     .from("tasks")
-    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
+    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by, tags")
     .eq("company_id", companyId)
     .eq("approval_status", "approved")
     .order("created_at", { ascending: true });
@@ -320,6 +321,7 @@ export default async function StaffCompanyPage({
           availableTags={availableTags}
           activeTags={activeTags}
           basePath={`/staff/${profileId}/${companyId}`}
+          keepParams={activeTaskTags.map((t): [string, string] => ["tasktag", t])}
         />
 
         <ManagersPanel companyId={companyId} managers={managers} />
@@ -333,6 +335,10 @@ export default async function StaffCompanyPage({
           teamMembers={teamMembers ?? []}
           assignedTeamMember={assignedTeamMemberForCompany}
           canManage={false}
+          availableTags={availableTags}
+          activeTags={activeTaskTags}
+          basePath={`/staff/${profileId}/${companyId}`}
+          keepParams={activeTags.map((t): [string, string] => ["tag", t])}
         />
 
         <CompanyNotesPanel companyId={companyId} notes={notes ?? []} teamMembers={teamMembers ?? []} canManage={false} />

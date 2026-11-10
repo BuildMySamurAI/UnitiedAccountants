@@ -24,6 +24,7 @@ import { AssignSelect } from "../../../assign-select";
 import { ServiceAssignSelect } from "../../../service-assign-select";
 import { ASSIGNABLE_SERVICES, type AssignableServiceKey } from "@/lib/service-assignment";
 import { DeleteCompanyButton } from "./delete-company-button";
+import { getSelectableTags } from "@/lib/tags";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -36,10 +37,15 @@ const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
 
 export default async function CompanyDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ profileId: string; companyId: string }>;
+  searchParams: Promise<{ tag?: string | string[] }>;
 }) {
   const { profileId, companyId } = await params;
+  const { tag } = await searchParams;
+  const activeTags = (Array.isArray(tag) ? tag : tag ? [tag] : []).map((t) => t.toLowerCase());
+  const availableTags = await getSelectableTags().catch(() => [] as string[]);
   const supabase = await supabaseServer();
 
   const [{ data: profile }, { data: company }, { data: teamMembers }] = await Promise.all([
@@ -76,7 +82,7 @@ export default async function CompanyDetailPage({
   const [{ data: services }, { data: serviceDocuments }] = await Promise.all([
     supabase
       .from("company_services")
-      .select("id, company_id, service_type, subtype, license_number, deadline_date, status")
+      .select("id, company_id, service_type, subtype, license_number, deadline_date, status, tags")
       .eq("company_id", companyId)
       .order("created_at", { ascending: true }),
     supabase
@@ -272,7 +278,14 @@ export default async function CompanyDetailPage({
           </div>
         </div>
 
-        <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
+        <ServicesPanel
+          companyId={companyId}
+          services={services ?? []}
+          documentsByService={documentsByService}
+          availableTags={availableTags}
+          activeTags={activeTags}
+          basePath={`/owner/contacts/${profileId}/${companyId}`}
+        />
 
         <ManagersPanel companyId={companyId} managers={managers} />
 

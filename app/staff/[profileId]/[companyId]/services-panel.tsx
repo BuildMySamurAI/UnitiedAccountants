@@ -16,6 +16,7 @@ export function ServicesPanel({
   availableTags,
   activeTags,
   basePath,
+  keepParams,
 }: {
   companyId: string;
   services: ServiceRecord[];
@@ -23,6 +24,7 @@ export function ServicesPanel({
   availableTags: string[];
   activeTags: string[]; // lower-cased, from ?tag=
   basePath: string; // this company page's own path, for filter links
+  keepParams: [string, string][]; // the tasks filter's selection, preserved in our links
 }) {
   const router = useRouter();
   const [newTags, setNewTags] = useState<string[]>([]);
@@ -63,6 +65,14 @@ export function ServicesPanel({
     activeTags.length > 0
       ? services.filter((s) => (s.tags ?? []).some((t) => activeTags.includes(t.toLowerCase())))
       : services;
+  function hrefFor(nextTags: string[]): string {
+    const params = new URLSearchParams();
+    for (const [k, v] of keepParams) params.append(k, v);
+    for (const n of nextTags) params.append("tag", n);
+    const qs = params.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  }
+
   const active = shown.filter((s) => s.status === "Active");
   const inactive = shown.filter((s) => s.status === "Inactive");
 
@@ -80,7 +90,7 @@ export function ServicesPanel({
             {activeTags.length > 0 && (
               <>
                 {" · "}
-                <Link href={basePath}>clear</Link>
+                <Link href={hrefFor([])}>clear</Link>
               </>
             )}
           </div>
@@ -88,13 +98,10 @@ export function ServicesPanel({
             {availableTags.map((t) => {
               const on = activeTags.includes(t.toLowerCase());
               const next = on ? activeTags.filter((a) => a !== t.toLowerCase()) : [...activeTags, t.toLowerCase()];
-              const params = new URLSearchParams();
-              for (const n of next) params.append("tag", n);
-              const qs = params.toString();
               return (
                 <Link
                   key={t}
-                  href={qs ? `${basePath}?${qs}` : basePath}
+                  href={hrefFor(next)}
                   className="ctag"
                   style={{
                     background: on ? "var(--green-soft, #e4efe9)" : undefined,

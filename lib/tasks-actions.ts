@@ -2,8 +2,22 @@
 
 import { supabaseServer } from "@/lib/supabase/server";
 import type { TaskTypeKey, TaskStatus } from "@/lib/tasks";
+import { getSelectableTags, resolveAllowedTags } from "@/lib/tags";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+// Tags must come from the approved list; nothing free-typed is ever stored.
+async function validateTags(requested: string[]): Promise<{ ok: true; tags: string[] } | { ok: false; error: string }> {
+  let allowed: string[];
+  try {
+    allowed = await getSelectableTags();
+  } catch {
+    return { ok: false, error: "Could not load the tag list. Please try again." };
+  }
+  const resolved = resolveAllowedTags(requested, allowed);
+  if (!resolved.ok) return { ok: false, error: `Not an approved tag: ${resolved.unknown.join(", ")}` };
+  return { ok: true, tags: resolved.tags };
+}
 
 function todayDateOnly(): string {
   const now = new Date();
@@ -41,6 +55,7 @@ export async function addTask(input: {
   required?: boolean;
   assignedTo?: string;
   deadlineDate?: string;
+  tags?: string[];
   createdBy: "team" | "client";
 }): Promise<ActionResult> {
   if (!input.companyId && !input.profileId) {
@@ -58,7 +73,16 @@ export async function addTask(input: {
     if (denied) return { ok: false, error: denied };
   }
 
+  // A client's request never carries tags; only owner-created tasks do.
+  let tags: string[] = [];
+  if (!isClientRequest && input.tags && input.tags.length > 0) {
+    const checked = await validateTags(input.tags);
+    if (!checked.ok) return checked;
+    tags = checked.tags;
+  }
+
   const { error } = await supabase.from("tasks").insert({
+    tags,
     company_id: input.companyId || null,
     profile_id: input.profileId || null,
     task_type: input.taskType,
@@ -86,6 +110,7 @@ export async function updateTask(
     deadlineDate?: string;
     title?: string;
     required?: boolean;
+    tags?: string[];
   }
 ): Promise<ActionResult> {
   const supabase = await supabaseServer();
@@ -94,7 +119,8 @@ export async function updateTask(
     fields.assignedTo !== undefined ||
     fields.deadlineDate !== undefined ||
     fields.title !== undefined ||
-    fields.required !== undefined
+    fields.required !== undefined ||
+    fields.tags !== undefined
   ) {
     const denied = await requireOwner(supabase);
     if (denied) return { ok: false, error: denied };
@@ -104,7 +130,12 @@ export async function updateTask(
     return { ok: false, error: "Title can't be empty." };
   }
 
-  const update: Record<string, string | boolean | null> = { updated_at: new Date().toISOString() };
+  const update: Record<string, string | boolean | string[] | null> = { updated_at: new Date().toISOString() };
+  if (fields.tags !== undefined) {
+    const checked = await validateTags(fields.tags);
+    if (!checked.ok) return checked;
+    update.tags = checked.tags;
+  }
   if (fields.status !== undefined) {
     update.status = fields.status;
     if (fields.status === "Complete") update.completed_at = todayDateOnly();

@@ -20,6 +20,7 @@ export type TaskRecord = {
   status: TaskStatus;
   completed_at: string | null;
   created_by: "team" | "client";
+  tags?: string[];
 };
 
 export type TaskDocRecord = { id: string; task_id: string; file_name: string; storage_path: string };
@@ -34,14 +35,17 @@ export function TaskRow({
   assignableTeamMembers,
   scopeLabel,
   canManage,
+  availableTags = [],
 }: {
   task: TaskRecord;
   documents: TaskDocRecord[];
   assignableTeamMembers: { id: string; full_name: string }[];
   scopeLabel?: string;
   canManage: boolean;
+  availableTags?: string[];
 }) {
   const router = useRouter();
+  const currentTags = task.tags ?? [];
   const [deadline, setDeadline] = useState(task.deadline_date ?? "");
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,10 +82,23 @@ export function TaskRow({
 
   async function save(fields: Parameters<typeof updateTask>[1]) {
     setSaving(true);
-    await updateTask(task.id, fields);
+    const result = await updateTask(task.id, fields);
     setSaving(false);
+    if (fields.tags !== undefined) setError(result.ok ? null : result.error);
     router.refresh();
   }
+
+  function toggleTag(tag: string) {
+    const on = currentTags.some((t) => t.toLowerCase() === tag.toLowerCase());
+    save({ tags: on ? currentTags.filter((t) => t.toLowerCase() !== tag.toLowerCase()) : [...currentTags, tag] });
+  }
+
+  // Approved tags plus any saved tag that has since left the list, so it can
+  // still be seen and removed.
+  const chipTags = [
+    ...availableTags,
+    ...currentTags.filter((t) => !availableTags.some((a) => a.toLowerCase() === t.toLowerCase())),
+  ];
 
   const statusVariant: Record<TaskStatus, "g" | "a" | "n"> = {
     "Not Started": "n",
@@ -186,6 +203,42 @@ export function TaskRow({
           </button>
         )}
       </div>
+
+      {canManage && chipTags.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {chipTags.map((t) => {
+            const on = currentTags.some((c) => c.toLowerCase() === t.toLowerCase());
+            return (
+              <button
+                type="button"
+                key={t}
+                className="ctag"
+                disabled={saving}
+                onClick={() => toggleTag(t)}
+                style={{
+                  cursor: "pointer",
+                  background: on ? "var(--green-soft, #e4efe9)" : undefined,
+                  borderColor: on ? "var(--green)" : undefined,
+                }}
+              >
+                {on ? "✓ " : ""}
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        !canManage &&
+        currentTags.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {currentTags.map((t) => (
+              <span key={t} className="ctag">
+                {t}
+              </span>
+            ))}
+          </div>
+        )
+      )}
 
       {editing && canManage && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8 }}>

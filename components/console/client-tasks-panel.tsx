@@ -19,6 +19,7 @@ export function ClientTasksPanel({
   documentsByTask,
   teamMembers,
   canManage,
+  availableTags,
 }: {
   profileId: string;
   companies: CompanyOption[];
@@ -26,8 +27,10 @@ export function ClientTasksPanel({
   documentsByTask: Record<string, TaskDocRecord[]>;
   teamMembers: { id: string; full_name: string }[];
   canManage: boolean;
+  availableTags: string[];
 }) {
   const router = useRouter();
+  const [newTags, setNewTags] = useState<string[]>([]);
   const [scope, setScope] = useState<string>("client"); // "client" or a companyId
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -50,6 +53,7 @@ export function ClientTasksPanel({
       description: description || undefined,
       assignedTo: effectiveAssignedTo || undefined,
       deadlineDate: deadline || undefined,
+      tags: newTags,
       createdBy: "team",
     });
     setAdding(false);
@@ -58,6 +62,7 @@ export function ClientTasksPanel({
       return;
     }
     setDescription("");
+    setNewTags([]);
     setAssignedTo("");
     router.refresh();
   }
@@ -84,6 +89,7 @@ export function ClientTasksPanel({
             assignableTeamMembers={teamMembers}
             scopeLabel={scopeLabelFor(t)}
             canManage={canManage}
+            availableTags={availableTags}
           />
         ))}
       </div>
@@ -137,6 +143,30 @@ export function ClientTasksPanel({
           <button onClick={handleAdd} disabled={adding} className="cbtn">
             {adding ? "Adding..." : "+ Add task"}
           </button>
+
+          {availableTags.length > 0 && (
+            <div style={{ flexBasis: "100%", display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {availableTags.map((t) => {
+                const on = newTags.includes(t);
+                return (
+                  <button
+                    type="button"
+                    key={t}
+                    className="ctag"
+                    onClick={() => setNewTags(on ? newTags.filter((x) => x !== t) : [...newTags, t])}
+                    style={{
+                      cursor: "pointer",
+                      background: on ? "var(--green-soft, #e4efe9)" : undefined,
+                      borderColor: on ? "var(--green)" : undefined,
+                    }}
+                  >
+                    {on ? "✓ " : "+ "}
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
       {error && <p style={{ fontSize: 11.5, color: "var(--red)", padding: "0 15px 10px" }}>{error}</p>}

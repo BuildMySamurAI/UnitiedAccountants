@@ -71,7 +71,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
   const companyIds = companyList.map((c) => c.id);
   const { data: tasks } = await supabase
     .from("tasks")
-    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by")
+    .select("id, company_id, profile_id, title, description, required, assigned_to, deadline_date, status, completed_at, created_by, tags")
     .or(`profile_id.eq.${profileId}${companyIds.length > 0 ? `,company_id.in.(${companyIds.join(",")})` : ""}`)
     .eq("approval_status", "approved")
     .order("created_at", { ascending: true });
@@ -158,6 +158,7 @@ export default async function StaffClientDetailPage({ params }: { params: Promis
               documentsByTask={documentsByTask}
               teamMembers={teamMembers ?? []}
               canManage={false}
+              availableTags={[]}
             />
           }
           notesPanel={

@@ -23,6 +23,7 @@ import { EntitySwitch } from "@/components/console/entity-switch";
 import { ASSIGNABLE_SERVICES } from "@/lib/service-assignment";
 import { staffAssignmentContext, canSeeService } from "@/lib/staff-access";
 import { getDefaultOwner } from "@/lib/default-owner";
+import { getSelectableTags } from "@/lib/tags";
 
 const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
   "Client Onboarding": "b",
@@ -35,10 +36,15 @@ const STAGE_PILL: Record<string, "g" | "a" | "b" | "n"> = {
 
 export default async function StaffCompanyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ profileId: string; companyId: string }>;
+  searchParams: Promise<{ tag?: string | string[] }>;
 }) {
   const { profileId, companyId } = await params;
+  const { tag } = await searchParams;
+  const activeTags = (Array.isArray(tag) ? tag : tag ? [tag] : []).map((t) => t.toLowerCase());
+  const availableTags = await getSelectableTags().catch(() => [] as string[]);
   const supabase = await supabaseServer();
   const {
     data: { user },
@@ -95,7 +101,7 @@ export default async function StaffCompanyPage({
   const [{ data: services }, { data: serviceDocuments }] = await Promise.all([
     supabase
       .from("company_services")
-      .select("id, company_id, service_type, subtype, license_number, deadline_date, status")
+      .select("id, company_id, service_type, subtype, license_number, deadline_date, status, tags")
       .eq("company_id", companyId)
       .order("created_at", { ascending: true }),
     supabase
@@ -307,7 +313,14 @@ export default async function StaffCompanyPage({
           );
         })()}
 
-        <ServicesPanel companyId={companyId} services={services ?? []} documentsByService={documentsByService} />
+        <ServicesPanel
+          companyId={companyId}
+          services={services ?? []}
+          documentsByService={documentsByService}
+          availableTags={availableTags}
+          activeTags={activeTags}
+          basePath={`/staff/${profileId}/${companyId}`}
+        />
 
         <ManagersPanel companyId={companyId} managers={managers} />
 

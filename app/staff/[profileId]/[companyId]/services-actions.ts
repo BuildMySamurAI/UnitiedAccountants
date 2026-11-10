@@ -3,11 +3,25 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { SERVICE_TYPE_LABEL, type ServiceTypeKey } from "@/lib/services";
 import { syncRenewalReminderTask } from "@/lib/service-renewal-tasks";
+import { getSelectableTags, resolveAllowedTags } from "@/lib/tags";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 function labelFor(serviceType: ServiceTypeKey, subtype: string | null): string {
   return subtype ? `${SERVICE_TYPE_LABEL[serviceType]} - ${subtype}` : SERVICE_TYPE_LABEL[serviceType];
+}
+
+// Tags must come from the approved list; nothing free-typed is ever stored.
+async function validateTags(requested: string[]): Promise<{ ok: true; tags: string[] } | { ok: false; error: string }> {
+  let allowed: string[];
+  try {
+    allowed = await getSelectableTags();
+  } catch {
+    return { ok: false, error: "Could not load the tag list. Please try again." };
+  }
+  const resolved = resolveAllowedTags(requested, allowed);
+  if (!resolved.ok) return { ok: false, error: `Not an approved tag: ${resolved.unknown.join(", ")}` };
+  return { ok: true, tags: resolved.tags };
 }
 
 export async function addCompanyService(input: {
@@ -16,7 +30,15 @@ export async function addCompanyService(input: {
   subtype?: string;
   licenseNumber?: string;
   deadlineDate?: string;
+  tags?: string[];
 }): Promise<ActionResult> {
+  let tags: string[] = [];
+  if (input.tags && input.tags.length > 0) {
+    const checked = await validateTags(input.tags);
+    if (!checked.ok) return checked;
+    tags = checked.tags;
+  }
+
   const supabase = await supabaseServer();
 
   const { data, error } = await supabase
@@ -27,6 +49,7 @@ export async function addCompanyService(input: {
       subtype: input.subtype || null,
       license_number: input.licenseNumber || null,
       deadline_date: input.deadlineDate || null,
+      tags,
     })
     .select("id")
     .single();
@@ -47,11 +70,16 @@ export async function addCompanyService(input: {
 
 export async function updateCompanyService(
   serviceId: string,
-  fields: { deadlineDate?: string; licenseNumber?: string; status?: "Active" | "Inactive" }
+  fields: { deadlineDate?: string; licenseNumber?: string; status?: "Active" | "Inactive"; tags?: string[] }
 ): Promise<ActionResult> {
   const supabase = await supabaseServer();
 
-  const update: Record<string, string | null> = { updated_at: new Date().toISOString() };
+  const update: Record<string, string | string[] | null> = { updated_at: new Date().toISOString() };
+  if (fields.tags !== undefined) {
+    const checked = await validateTags(fields.tags);
+    if (!checked.ok) return checked;
+    update.tags = checked.tags;
+  }
   if (fields.deadlineDate !== undefined) update.deadline_date = fields.deadlineDate || null;
   if (fields.licenseNumber !== undefined) update.license_number = fields.licenseNumber || null;
   if (fields.status !== undefined) update.status = fields.status;

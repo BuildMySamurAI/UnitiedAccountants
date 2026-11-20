@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addContactTag } from "../../actions";
+import { addContactTag, removeContactTag } from "../../actions";
 
 export function TagsCard({
   contactId,
   tags,
   availableTags,
+  removableTags,
 }: {
   contactId: string;
   tags: string[];
   availableTags: string[];
+  // Chips that may be removed; system tags are shown but have no X button.
+  removableTags: string[];
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +36,18 @@ export function TagsCard({
     router.refresh();
   }
 
+  async function handleRemove(tag: string) {
+    setSubmitting(true);
+    setError(null);
+    const result = await removeContactTag(contactId, tag);
+    setSubmitting(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <div className="ccard" style={{ marginBottom: 16 }}>
       <header>
@@ -44,6 +59,17 @@ export function TagsCard({
           {tags.map((t) => (
             <span key={t} className="ctag">
               {t}
+              {removableTags.includes(t) && (
+                <button
+                  type="button"
+                  aria-label={`Remove tag ${t}`}
+                  disabled={submitting}
+                  onClick={() => handleRemove(t)}
+                  style={{ marginLeft: 6, padding: 0, border: "none", background: "none", color: "inherit", cursor: "pointer", lineHeight: 1 }}
+                >
+                  &times;
+                </button>
+              )}
             </span>
           ))}
           {tags.length === 0 && <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>No tags yet.</span>}

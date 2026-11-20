@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@supabase/supabase-js";
@@ -8,11 +9,12 @@ import {
   deleteOpportunity,
   deleteContact as deleteGhlContact,
   addContactTags,
+  removeContactTags,
 } from "@/lib/ghl/client";
 import { OPPORTUNITY_FIELDS } from "@/lib/ghl/constants";
 import { ASSIGNABLE_SERVICES, type AssignableServiceKey } from "@/lib/service-assignment";
 import { revealCompanySsn, type RevealResult } from "@/lib/ssn-reveal";
-import { getSelectableTags, resolveAllowedTags } from "@/lib/tags";
+import { getSelectableTags, isHiddenTag, resolveAllowedTags } from "@/lib/tags";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -198,6 +200,38 @@ export async function addContactTag(contactId: string, tag: string): Promise<Act
     return { ok: false, error: err instanceof Error ? err.message : "Failed to add tag" };
   }
 
+  return { ok: true };
+}
+
+// Removes one tag from one client's GHL contact only - the tag itself stays on
+// the location list and on every other contact. Owner-only, checked here so it
+// holds even when called directly.
+export async function removeContactTag(contactId: string, tag: string): Promise<ActionResult> {
+  const trimmed = tag.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Tag can't be empty." };
+  }
+  if (isHiddenTag(trimmed)) {
+    return { ok: false, error: "System tags can't be removed." };
+  }
+
+  try {
+    const supabase = await supabaseServer();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Not signed in." };
+    const { data: ownerRow } = await supabaseAdmin().from("owners").select("id").eq("id", user.id).maybeSingle();
+    if (!ownerRow) return { ok: false, error: "Only owners can remove tags." };
+
+    await removeContactTags(contactId, [trimmed]);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to remove tag" };
+  }
+
+  // Same pages the tag list/filters render on (matches the Tags screen action).
+  revalidatePath("/owner/contacts");
+  revalidatePath("/owner/contacts/[profileId]", "page");
   return { ok: true };
 }
 

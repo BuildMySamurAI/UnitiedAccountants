@@ -12,7 +12,7 @@ import { ClientStatusToggle } from "@/components/console/client-status-toggle";
 import { ContactInfoPanel } from "@/components/console/contact-info-panel";
 import { AssignSelect } from "../../assign-select";
 import { TagsCard } from "./tags-card";
-import { getSelectableTags } from "@/lib/tags";
+import { getSelectableTags, isHiddenTag } from "@/lib/tags";
 import { DeleteContactButton } from "./delete-contact-button";
 import { ResendClientInviteButton } from "./resend-client-invite-button";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -172,7 +172,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {profile.ghl_contact_id && <TagsCard contactId={profile.ghl_contact_id} tags={tags} availableTags={availableTags} />}
+        {profile.ghl_contact_id && <TagsCard contactId={profile.ghl_contact_id} tags={tags} availableTags={availableTags} removableTags={tags.filter((t) => !isHiddenTag(t))} />}
 
         <ContactTabs
           companiesCount={companyList.length}

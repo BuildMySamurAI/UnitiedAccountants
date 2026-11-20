@@ -480,6 +480,14 @@ export async function addContactTags(contactId: string, tags: string[]) {
   });
 }
 
+// Removes tags from this one contact only (does not delete the tag from the location).
+export async function removeContactTags(contactId: string, tags: string[]) {
+  return ghlFetch(`/contacts/${contactId}/tags`, {
+    method: "DELETE",
+    body: JSON.stringify({ tags }),
+  });
+}
+
 // Every tag defined on the location (not just ones currently on a contact).
 // Read-only - nothing here creates or deletes tags.
 export async function getLocationTags(): Promise<string[]> {

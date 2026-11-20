@@ -31,6 +31,29 @@ function revalidateTagPages() {
   revalidatePath("/owner/bulk-messages");
 }
 
+// company_services.tags and tasks.tags hold tag names as plain text, so a tag
+// removed or renamed in GHL would otherwise linger there and make the next save
+// of that service/task fail the approved-list check. Replaces `oldName` with
+// `newName` (or just strips it when newName is null) on every row holding it,
+// never leaving duplicates. Returns an error message, or null on success.
+async function updateStoredTags(oldName: string, newName: string | null): Promise<string | null> {
+  const admin = supabaseAdmin();
+  for (const table of ["company_services", "tasks"] as const) {
+    const { data, error } = await admin.from(table).select("id, tags").contains("tags", [oldName]);
+    if (error) return `Could not update ${table}: ${error.message}`;
+    for (const row of (data ?? []) as { id: string; tags: string[] | null }[]) {
+      const next: string[] = [];
+      for (const t of row.tags ?? []) {
+        const mapped = t === oldName ? newName : t;
+        if (mapped !== null && !next.includes(mapped)) next.push(mapped);
+      }
+      const { error: upErr } = await admin.from(table).update({ tags: next }).eq("id", row.id);
+      if (upErr) return `Could not update ${table}: ${upErr.message}`;
+    }
+  }
+  return null;
+}
+
 export async function addTag(name: string): Promise<TagActionResult> {
   const owner = await requireOwner();
   if (!owner.ok) return owner;
@@ -73,6 +96,10 @@ export async function renameTag(tagId: string, newName: string): Promise<TagActi
     }
     if (target.name === trimmed) return { ok: true };
     await renameLocationTag(tagId, trimmed);
+    const cleanupError = await updateStoredTags(target.name, trimmed);
+    if (cleanupError) {
+      return { ok: false, error: `Tag was renamed in GHL, but services/tasks were not fully updated. ${cleanupError}` };
+    }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to rename tag." };
   }
@@ -91,6 +118,10 @@ export async function removeTag(tagId: string): Promise<TagActionResult> {
     if (!target) return { ok: false, error: "That tag no longer exists." };
     if (isHiddenTag(target.name)) return { ok: false, error: "System tags can't be removed." };
     await deleteLocationTag(tagId);
+    const cleanupError = await updateStoredTags(target.name, null);
+    if (cleanupError) {
+      return { ok: false, error: `Tag was removed in GHL, but services/tasks were not fully cleaned up. ${cleanupError}` };
+    }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to remove tag." };
   }
